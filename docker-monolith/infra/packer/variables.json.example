@@ -1,0 +1,9 @@
+{
+  "project_id": "myuser-docker",
+  "source_image_family": "ubuntu-1604-lts-hw5",
+  "machine_type": "f1-micro-hw5",
+  "image_description": "base img for docker-monolith-image",
+  "disk_size": "10",
+  "network": "default",
+  "tags": "docker-machine"
+}
