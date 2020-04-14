@@ -432,6 +432,46 @@ terraform apply --auto-approve
 ansible-playbook playbooks/otus_reddit.yml
 [...]
 ```
+## ДЗ №13
+### Основное задание.
+Установлен hadolint для windows, добавлен плагин hadolint для vsc. Используя библиотеку рекомендаций hadolint оптимизированы:
+src/comment/Dockerfile - вариант сохранен в Dockerfile.1, использован базовый образ ruby:2.6, изменены add => copy, можно выставить версию для увсех устанавлеваемых пакетов.
+src/post-py/Dockerfile - вариант сохранен в Dockerfile.1, использован базовый образ 3.6.0-alpine, изменены add => copy, можно выставить версию для увсех устанавлеваемых пакетов.
+src/ui/Dockerfile - вариант сохранен в Dockerfile.1, использован базовый образ ruby:2.6, изменены add => copy, можно выставить версию для увсех устанавлеваемых пакетов.
+Собраны образы, создана bridge-сеть, подняты контейнеры с прописанными алиасами. Проверена работа приложения.
+### Задание со *. Часть 1.
+Изменение env без пересборки образа выполнялось путём добавления флага -e:
+```
+docker run -d --network=reddit --network-alias=post_db2 --network-alias=comment_db2 mongo:latest
+docker run -d --network=reddit --network-alias=post2 -e POST_DATABASE_HOST=post_db2 immon/post:1.0
+docker run -d --network=reddit --network-alias=comment2 -e COMMENT_DATABASE_HOST=comment_db2 immon/comment:1.0
+docker run -d --network=reddit -p 9292:9292 -e POST_SERVICE_HOST=post2 -e COMMENT_SERVICE_HOST=comment2 immon/ui:1.0
+```
+### Задание со *. Часть 2.
+Выполнялося подбор оптимального базового образа и необходимых пакетов для минимизации размера контейнеров, анализировалась возможность удаления временных файлов, добавление флагов блокирующих использование кеша, документации к пакетам и т.п.
+Базовый образ ubuntu:16.04  - результат ~420MB в зависимости от доп.софта и флагов его установки/обновления.
+src/comment/Dockerfile.2 - базовый образ 2.7.1-alpine3.11, Gemfile.lock изменен BUNDLED WITH 2.1.2 - результат 272MB.
+src/ui/Dockerfile.2 - базовый образ 2.7.1-alpine3.11, Gemfile.lock изменен BUNDLED WITH 2.1.2 - результат 275MB.
+src/comment/Dockerfile - базовый образ alpine:3.9.4 - результат ~74MB, в зависимости от версии ruby.
+src/ui/Dockerfile - базовый образ alpine:3.9.4 - результат ~77MB, в зависимости от версии ruby.
+```
+[...]
+immon/comment       3.14                11a5e8507836        48 minutes ago      272MB
+immon/ui            3.14                aaa4f828340f        About an hour ago   275MB
+immon/comment       2.1                 783076d76082        2 hours ago         74MB
+immon/ui            2.17                f8be7f3f6497        2 hours ago         76.9MB
+[...]
+```
+Проверена работа приложения используя все из собранных образов.
+Применено подключение volume к mongodb, подняты новые версии контейнеров, проверено присутствие добавленного ранее поста:
+```
+docker volume create reddit_db
+docker run -d --rm --network=reddit --network-alias=post_db --network-alias=comment_db -v reddit_db:/data/db mongo:latest
+docker run -d --rm --network=reddit --network-alias=post immon/post:2.0
+docker run -d --rm --network=reddit --network-alias=comment immon/comment:2.1
+docker run -d --rm --network=reddit -p 9292:9292 immon/ui:2.17
+```
+
 for sale:)
 ----------
 [![Build Status](https://img.shields.io/travis/com/Otus-DevOps-2019-11/immon4ik_microservices/master?color=9cf&label=immon4ik&style=plastic)](https://img.shields.io/travis/com/Otus-DevOps-2019-11/immon4ik_microservices/master?color=9cf&label=immon4ik&style=plastic)
