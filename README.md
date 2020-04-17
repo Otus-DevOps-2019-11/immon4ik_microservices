@@ -472,6 +472,62 @@ docker run -d --rm --network=reddit --network-alias=comment immon/comment:2.1
 docker run -d --rm --network=reddit -p 9292:9292 immon/ui:2.17
 ```
 
+## ДЗ №14
+
+### Основное задание
+
+- Поднят контейнер только с внутренним сетевым драйвером(флаг --network none). Поднят контейнер использующий сетевой дравер хоста(флаг --network host). При попытке поднятия нескольких контейнеров, использующих сетевой дравер хоста, запущенным остается только первый контейнер, т.к. последующие пытались использовать тот же адрес и порт.
+- Поднято приложение, используя созданную сеть с драйвером bridge(флаг --driver bridge). Проверена работоспособность приложения при присвоение контейнерам имен или сетевых алиасов при старте.
+- Освоено создание docker-сети и подключение к ней контейнеров:
+
+```bash
+docker network create back_net --subnet=10.0.2.0/24
+docker network create front_net --subnet=10.0.1.0/24
+docker network connect front_net post
+docker network connect front_net comment
+```
+
+- Разобран сетевой стек, изучены особенности формирования bridge-сетей, bridge-интерфейсов, iptables, правил DNAT в цепочке DOCKER, работа процесса docker-proxy.
+- Изучена работа docker-compose и её команды.
+Сформированы:
+src/docker-compose.yml - параметризированный сценарий запуска приложения reddit, включающий работу в двух docker-сетях и сетевых алиасов.
+src/.env - переменные окружения для docker-compose(*https://docs.docker.com/compose/environment-variables/#the-env-file*).
+src/.env.example - шаблон для выполнения задания.
+- Базовое имя проекта формируется в соответствии с папкой, из которой запускается docker-compose. Его можно задать при помощи специальной переменной среды окружения COMPOSE_PROJECT_NAME. Задана в src/.env.
+
+### Задание со *
+
+- Используя *https://docs.docker.com/compose/extends/* сформирован параметризированный файл для переопределения свойств src/docker-compose.override.yml:
+
+```docker
+version: '3.3'
+
+services:
+  ui:
+    command: ${SERVICE_UI_COMMAND}
+    volumes:
+      - ${UI_VOLUME_NAME}:${UI_VOLUME_DEST}
+
+  post:
+    volumes:
+      - ${POST_VOLUME_NAME}:${POST_VOLUME_DEST}
+
+  comment:
+    command: ${SERVICE_COMMENT_COMMAND}
+    volumes:
+      - ${COMMENT_VOLUME_NAME}:${COMMENT_VOLUME_DEST}
+
+volumes:
+  app_ui:
+  app_comment:
+  app_post:
+```
+
+- Добавлен блок volumes для каждого из сервисов, указывающий внешнюю папку для хранения файлов приложения. Использование volume позволяет изменять код каждого из приложений, не выполняя сборку образа.
+- Добавлен блок command, который переопределяет CMD в Dockerfile сервиса. Внесенные команды позволят запустить puma для ruby приложений в дебаг режиме с двумя воркерами (флаги --debug и -w 2).
+__Все параметры определены в src/.env__
+
 for sale:)
+
 ----------
 [![Build Status](https://img.shields.io/travis/com/Otus-DevOps-2019-11/immon4ik_microservices/master?color=9cf&label=immon4ik&style=plastic)](https://img.shields.io/travis/com/Otus-DevOps-2019-11/immon4ik_microservices/master?color=9cf&label=immon4ik&style=plastic)
