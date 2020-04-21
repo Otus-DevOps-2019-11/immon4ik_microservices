@@ -471,35 +471,27 @@ docker run -d --rm --network=reddit --network-alias=post immon/post:2.0
 docker run -d --rm --network=reddit --network-alias=comment immon/comment:2.1
 docker run -d --rm --network=reddit -p 9292:9292 immon/ui:2.17
 ```
-
 ## ДЗ №14
-
-### Основное задание
-
-- Поднят контейнер только с внутренним сетевым драйвером(флаг --network none). Поднят контейнер использующий сетевой дравер хоста(флаг --network host). При попытке поднятия нескольких контейнеров, использующих сетевой дравер хоста, запущенным остается только первый контейнер, т.к. последующие пытались использовать тот же адрес и порт.
-- Поднято приложение, используя созданную сеть с драйвером bridge(флаг --driver bridge). Проверена работоспособность приложения при присвоение контейнерам имен или сетевых алиасов при старте.
-- Освоено создание docker-сети и подключение к ней контейнеров:
-
-```bash
+### Основное задание.
+ - Поднят контейнер только с внутренним сетевым драйвером(флаг --network none). Поднят контейнер использующий сетевой дравер хоста(флаг --network host). При попытке поднятия нескольких контейнеров, использующих сетевой дравер хоста, запущенным остается только первый контейнер, т.к. последующие пытались использовать тот же адрес и порт.
+ - Поднято приложение, используя созданную сеть с драйвером bridge(флаг --driver bridge). Проверена работоспособность приложения при присвоение контейнерам имен или сетевых алиасов при старте.
+ - Освоено создание docker-сети и подключение к ней контейнеров:
+```
 docker network create back_net --subnet=10.0.2.0/24
 docker network create front_net --subnet=10.0.1.0/24
 docker network connect front_net post
 docker network connect front_net comment
 ```
-
-- Разобран сетевой стек, изучены особенности формирования bridge-сетей, bridge-интерфейсов, iptables, правил DNAT в цепочке DOCKER, работа процесса docker-proxy.
-- Изучена работа docker-compose и её команды.
+ - Разобран сетевой стек, изучены особенности формирования bridge-сетей, bridge-интерфейсов, iptables, правил DNAT в цепочке DOCKER, работа процесса docker-proxy.
+  - Изучена работа docker-compose и её команды.
 Сформированы:
 src/docker-compose.yml - параметризированный сценарий запуска приложения reddit, включающий работу в двух docker-сетях и сетевых алиасов.
 src/.env - переменные окружения для docker-compose(*https://docs.docker.com/compose/environment-variables/#the-env-file*).
 src/.env.example - шаблон для выполнения задания.
-- Базовое имя проекта формируется в соответствии с папкой, из которой запускается docker-compose. Его можно задать при помощи специальной переменной среды окружения COMPOSE_PROJECT_NAME. Задана в src/.env.
-
-### Задание со *
-
-- Используя *https://docs.docker.com/compose/extends/* сформирован параметризированный файл для переопределения свойств src/docker-compose.override.yml:
-
-```docker
+ - Базовое имя проекта формируется в соответствии с папкой, из которой запускается docker-compose. Его можно задать при помощи специальной переменной среды окружения COMPOSE_PROJECT_NAME. Задана в src/.env.
+### Задание со *.
+ - Используя *https://docs.docker.com/compose/extends/* сформирован параметризированный файл для переопределения свойств src/docker-compose.override.yml:
+```
 version: '3.3'
 
 services:
@@ -522,12 +514,201 @@ volumes:
   app_comment:
   app_post:
 ```
-
-- Добавлен блок volumes для каждого из сервисов, указывающий внешнюю папку для хранения файлов приложения. Использование volume позволяет изменять код каждого из приложений, не выполняя сборку образа.
-- Добавлен блок command, который переопределяет CMD в Dockerfile сервиса. Внесенные команды позволят запустить puma для ruby приложений в дебаг режиме с двумя воркерами (флаги --debug и -w 2).
+ - Добавлен блок volumes для каждого из сервисов, указывающий внешнюю папку для хранения файлов приложения. Использование volume позволяет изменять код каждого из приложений, не выполняя сборку образа.
+ - Добавлен блок command, который переопределяет CMD в Dockerfile сервиса. Внесенные команды позволят запустить puma для ruby приложений в дебаг режиме с двумя воркерами (флаги --debug и -w 2).
 __Все параметры определены в src/.env__
+## ДЗ №15
+### Основное задание.
+__С предыдущего ДЗ остался хост в gcp с установленными docker, docker-compose, docker-machine.__ __Это ДЗ является отправной точко для выполнения проекта, на основе управляющего хоста будет создан образ и описан в шаблоне packer, для создания инстанса будет использован terraform.__
+ - Создана хост docker-gitlab используя docker-machine:
+```
+export GOOGLE_PROJECT=my_project
+docker-machine create --driver google \
+ --google-machine-image "ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20200407" \
+ --google-disk-size "50" --google-disk-type "pd-standard" \
+ --google-machine-type "n1-standard-1" --google-zone europe-west1-b docker-gitlab
+```
+ - Добавлены правила firewall используя gcloud(_в рамках проета будет добавлено в сценарий terraform__):
+```
+gcloud compute firewall-rules create docker-machine-allow-http \
+  --allow tcp:80 \
+  --target-tags=docker-machine \
+  --description="Allow http connections" \
+  --direction=INGRESS
+
+gcloud compute firewall-rules create docker-machine-allow-https \
+  --allow tcp:443 \
+  --target-tags=docker-machine \
+  --description="Allow https connections" \
+  --direction=INGRESS
+
+gcloud compute firewall-rules create reddit-app \
+  --allow tcp:9292 \
+  --target-tags=docker-machine \
+  --description="Allow PUMA connections" \
+  --direction=INGRESS
+```
+ - Доработан сценарий gitlab-ci/docker-compose.yml - параметризирован external_url:
+```
+GITLAB_OMNIBUS_CONFIG: |
+  external_url '${GITLAB_CI_URL:-http://127.0.0.1}'
+```
+ - Поднят контейнер с GitLab CI на хосте docker-gitlab используя docker-compose:
+```
+export GITLAB_CI_URL=my_docker-gitlab_host_ip
+docker-machine ssh docker-gitlab mkdir -p /srv/gitlab/config /srv/gitlab/data /srv/gitlab/logs
+docker-compose -f ./gitlab-ci/docker-compose.yml config
+docker-compose -f ./gitlab-ci/docker-compose.yml up -d
+```
+ - Согласно заданию настроен проект, зарегестрирован gitlab-runner. Отработаны задания по добавлению билда, тестирования, деплоя в .gitlab-ci.yml. Отработаны задания по созданию сред окружения - статических и динамических, их ограничений по типу запуска и обязательным параметрам(пример с tag) в .gitlab-ci.yml.
+### Задание со *.
+На основании открытых источников - https://docs.gitlab.com/ee/ci/docker/using_docker_build.html
+ - Для выполнения задания сначала сконфигурирован запуск gitlab-runner в безинтерактивном режиме. Написан скрипт, автоматизирующих запуск gitlab-runner на хосте. Т.к. планируется работа c __docker in docker(dind)__ учтена необходимость присутствие сертификатов. Для этого определены сертификаты хоста docker-gitlab и импортированы в переменные(*решение тестовое, не самое безопасное, вижу решение в монтировании volume с сертификатами MOUNT_POINT: /builds/$CI_PROJECT_PATH/mnt_*):
+```
+export GITLAB_CI_URL=http://your_gitlab_ip/
+export GITLAB_CI_TOKEN=your_runner_token
+export RUNNER_NAME=${RANDOM}-gitlab-runner
+
+docker-machine env docker-gitlab
+
+export DOCKER_HOST_CA_FILE=$(cat $DOCKER_CERT_PATH/ca.pem)
+export DOCKER_HOST_CERT_FILE=$(cat $DOCKER_CERT_PATH/cert.pem)
+export DOCKER_HOST_KEY_FILE=$(cat $DOCKER_CERT_PATH/key.pem)
+
+docker run -d --name $RUNNER_NAME --restart always \
+  -v /srv/${RUNNER_NAME}/config:/etc/gitlab-runner \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /home/docker-user/crt:/builds/homework/example \
+  gitlab/gitlab-runner:latest
+:
+docker exec -it $RUNNER_NAME gitlab-runner register \
+  --run-untagged \
+  --locked=false \
+  --non-interactive \
+  --url ${GITLAB_CI_URL:-http://127.0.0.1} \
+  --registration-token $GITLAB_CI_TOKEN \
+  --description "docker-runner" \
+  --tag-list "linux,xenial,ubuntu,docker" \
+  --executor docker \
+  --docker-image "alpine:latest" \
+  --docker-privileged \
+  --docker-volumes "docker-certs-client:/certs/client" \
+  --env "DOCKER_DRIVER=overlay2" \
+  --env "DOCKER_TLS_CERTDIR=/certs" \
+  --env "DOCKER_HOST_CA_FILE=$(cat $DOCKER_CERT_PATH/ca.pem)" \
+  --env "DOCKER_HOST_CERT_FILE=$(cat $DOCKER_CERT_PATH/cert.pem)" \
+  --env "DOCKER_HOST_KEY_FILE=$(cat $DOCKER_CERT_PATH/key.pem)"
+
+```
+ - На основе этого был написан скрипты: gitlab-ci/set_env.sh - переменные для установи gitlab-runner; gitlab-ci/run_reg_runner.sh - простейший скрипт автоматизации развертывания и регистрации Gitlab CI Runner.
+ - В Gitlab CI добавлены переменные, позволяющие подключиться к личному docker hub. Реализовано через ui, можно вкючить в скрипт запуска\регистрации gitlab-runner:
+```
+DOCKER_HUB_LOGIN=mylogin
+DOCKER_HUB_PASSWORD=mypassword
+```
+ - Интегрированы оповещения от Gitlab CI в мой канал slack(#pavel-batsev), используя встроенную интеграцию Gitlab и добавленное в канал slack приложение Incoming WebHooks.
+ - Доработан сценарий .gitlab-ci.yml для реализации билда образов и их пуша в мой docker hub, используя dind. Внесены доработки в Dockerfile:
+```
+build_job:
+    stage: build
+    image: 'docker:19.03.8'
+    services:
+        - 'docker:19.03.8-dind'
+    before_script:
+        - 'docker info'
+        - 'docker login -u $DOCKER_HUB_LOGIN -p $DOCKER_HUB_PASSWORD'
+        - 'docker image ls'
+    script:
+        - 'echo ''Building'''
+        - 'docker build -t ${DOCKER_HUB_LOGIN:-user}/otus-reddit:${CI_COMMIT_TAG:-1.0.0}.${CI_COMMIT_SHORT_SHA:-0} ./reddit'
+        - 'docker push ${DOCKER_HUB_LOGIN:-user}/otus-reddit:${CI_COMMIT_TAG:-1.0.0}.${CI_COMMIT_SHORT_SHA:-0}'
+    after_script:
+        - 'docker image ls'
+```
+ - Доработан сценарий .gitlab-ci.yml для деплоя приложения, используя docker-compose. Написан reddit/docker-compose.yml и внесены доработки в файлы приложения /reddit:
+```
+branch_review:
+    stage: review
+    image: 'docker:19.03.8'
+    variables:
+        DOCKER_TLS_VERIFY: '1'
+        DOCKER_HOST: 'tcp://$CI_SERVER_HOST:2376'
+        DOCKER_CERT_PATH: /tmp/$CI_COMMIT_REF_NAME
+    before_script:
+        - 'mkdir -p $DOCKER_CERT_PATH'
+        - 'echo "$DOCKER_HOST_CA_FILE" > $DOCKER_CERT_PATH/ca.pem'
+        - 'echo "$DOCKER_HOST_CERT_FILE" > $DOCKER_CERT_PATH/cert.pem'
+        - 'echo "$DOCKER_HOST_KEY_FILE" > $DOCKER_CERT_PATH/key.pem'
+        - 'echo "DOCKER_CERT_PATH=$DOCKER_CERT_PATH"'
+        - 'ls -a $DOCKER_CERT_PATH'
+        - 'echo "DOCKER_HOST=$DOCKER_HOST"'
+        - 'docker info'
+        - 'docker login -u $DOCKER_HUB_LOGIN -p $DOCKER_HUB_PASSWORD'
+        - 'apk add py-pip python-dev libffi-dev openssl-dev gcc libc-dev make'
+        - 'pip install docker-compose'
+        - 'docker-compose --version'
+        - 'docker ps -as'
+        - 'docker image ls'
+        - 'docker-compose -f ./reddit/docker-compose.yml config'
+    after_script:
+        - 'docker ps -as'
+        - 'docker image ls'
+    only:
+        - branches
+    except:
+        - master
+    script:
+        - 'echo "Deploy on branch/$CI_COMMIT_REF_NAME environment"'
+        - 'docker-compose -f ./reddit/docker-compose.yml up -d'
+    environment:
+        name: branch/$CI_COMMIT_REF_NAME
+        url: 'http://$CI_SERVER_HOST:9292'
+        on_stop: stop_branch_review
+        auto_stop_in: '3 days'
+```
+ - Доработан сценарий .gitlab-ci.yml для удаления приложения и образа приложения из личного docker hub:
+```
+stop_branch_review:
+    stage: review
+    image: 'docker:19.03.8'
+    variables:
+        DOCKER_TLS_VERIFY: '1'
+        DOCKER_HOST: 'tcp://$CI_SERVER_HOST:2376'
+        DOCKER_CERT_PATH: /tmp/$CI_COMMIT_REF_NAME
+    before_script:
+        - 'mkdir -p $DOCKER_CERT_PATH'
+        - 'echo "$DOCKER_HOST_CA_FILE" > $DOCKER_CERT_PATH/ca.pem'
+        - 'echo "$DOCKER_HOST_CERT_FILE" > $DOCKER_CERT_PATH/cert.pem'
+        - 'echo "$DOCKER_HOST_KEY_FILE" > $DOCKER_CERT_PATH/key.pem'
+        - 'echo "DOCKER_CERT_PATH=$DOCKER_CERT_PATH"'
+        - 'ls -a $DOCKER_CERT_PATH'
+        - 'echo "DOCKER_HOST=$DOCKER_HOST"'
+        - 'docker info'
+        - 'docker login -u $DOCKER_HUB_LOGIN -p $DOCKER_HUB_PASSWORD'
+        - 'apk add py-pip python-dev libffi-dev openssl-dev gcc libc-dev make'
+        - 'pip install docker-compose'
+        - 'docker-compose --version'
+        - 'docker ps -as'
+        - 'docker image ls'
+        - 'docker-compose -f ./reddit/docker-compose.yml config'
+    after_script:
+        - 'docker ps -as'
+        - 'docker image ls'
+    only:
+        - branches
+    except:
+        - master
+    when: manual
+    script:
+        - 'echo ''Remove branch review app'''
+        - 'docker-compose -f ./reddit/docker-compose.yml down'
+        - 'docker image rm -f $(docker image ls -q ${DOCKER_HUB_LOGIN:-user}/otus-reddit) || echo'
+        - 'docker image rm -f $(docker image ls -q --filter ''dangling=true'') || echo'
+    environment:
+        name: branch/$CI_COMMIT_REF_NAME
+        action: stop
+```
 
 for sale:)
-
 ----------
 [![Build Status](https://img.shields.io/travis/com/Otus-DevOps-2019-11/immon4ik_microservices/master?color=9cf&label=immon4ik&style=plastic)](https://img.shields.io/travis/com/Otus-DevOps-2019-11/immon4ik_microservices/master?color=9cf&label=immon4ik&style=plastic)
