@@ -21,17 +21,17 @@ build_job:
         - 'docker image ls'
 test_unit_job:
     stage: test
-    image: ruby:2.4.2
+    image: 'ruby:2.4.2'
     services:
-        - mongo:latest
+        - 'mongo:latest'
     variables:
-        DATABASE_URL: mongo:27017
+        DATABASE_URL: 'mongo:27017'
     before_script:
-        - cd reddit
-        - bundle install
+        - 'cd reddit'
+        - 'bundle install'
     script:
-        - echo ''Testing 1''
-        - ruby simpletest.rb
+        - 'echo ''Testing 1'''
+        - 'ruby simpletest.rb'
 test_integration_job:
     stage: test
     script:
