@@ -40,3 +40,7 @@ service_account.json
 google_compute_engine
 api_key.py
 .vscode/
+
+# Gitlab CI
+gitlab-ci/set_env.sh
+gitlab-ci/run_reg_runner.sh
