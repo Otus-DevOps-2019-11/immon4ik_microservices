@@ -1,0 +1,86 @@
+version: '3.8'
+services:
+  post_db:
+    image: mongo:3.2
+    volumes:
+      - post_db:/data/db
+    networks:
+        back_net:
+            aliases:
+                - ${BACK_NET_ALIAS}
+  ui:
+    image: ${USERNAME}/ui:${UI_VERSION}
+    ports:
+      - ${UI_PORT}:${UI_PORT}/tcp
+    networks:
+      - ${NETWORK_FRONT_NET}
+  post:
+    image: ${USERNAME}/post:${POST_VERSION}
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+  comment:
+    image: ${USERNAME}/comment:${COMMENT_VERSION}
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+  prometheus:
+    image: ${USERNAME}/prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=1d'
+  node-exporter:
+    image: prom/node-exporter:latest
+    user: root
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"'
+  mongodb_exporter:
+    image: ${USERNAME}/mongodb_exporter:${MONGODB_EXPORTER_VERSION}
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+    ports:
+      - '9216:9216'
+    networks:
+      - ${NETWORK_BACK_NET}
+  cloudprober_exporter:
+    image: ${USERNAME}/cloudprober_exporter:${CLOUDPROBER_EXPORTER_VERSION}
+    ports:
+      - '9313:9313'
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+
+volumes:
+  post_db:
+  prometheus_data:
+
+networks:
+  back_net:
+    driver: ${NETWORK_BACK_NET_DRIVER}
+    ipam:
+      driver: default
+      config:
+        - subnet: ${NETWORK_BACK_NET_SUBNET}
+  front_net:
+    driver: ${NETWORK_FRONT_NET_DRIVER}
+    ipam:
+      driver: default
+      config:
+        - subnet: ${NETWORK_FRONT_NET_SUBNET}
