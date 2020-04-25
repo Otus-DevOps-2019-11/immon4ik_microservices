@@ -709,6 +709,484 @@ stop_branch_review:
         action: stop
 ```
 
+## ДЗ №16
+
+### Основное задание
+
+- Создана хост docker-gitlab используя docker-machine:
+
+```bash
+export GOOGLE_PROJECT=my_project
+docker-machine create --driver google \
+ --google-machine-image "ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20200407" \
+ --google-disk-size "50" --google-disk-type "pd-standard" \
+ --google-machine-type "n1-standard-1" --google-zone europe-west1-b docker-prometheus
+eval $(docker-machine env docker-prometheus)
+
+```
+
+- Запущен контейнер готового образа prometheus:
+
+```bash
+docker run --rm -p 9090:9090 -d --name prometheus prom/prometheus:latest
+
+```
+
+- Сформированы Dockerfile и prometheus.yml:
+
+/monitoring/prometheus/Dockerfile
+
+```docker
+FROM prom/prometheus:latest
+ADD prometheus.yml /etc/prometheus/
+
+```
+
+/monitoring/prometheus/prometheus.yml
+
+```yml
+---
+global:
+  scrape_interval: '5s'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets:
+        - 'localhost:9090'
+
+  - job_name: 'ui'
+    static_configs:
+      - targets:
+        - 'ui:9292'
+
+  - job_name: 'comment'
+    static_configs:
+      - targets:
+        - 'comment:9292'
+
+```
+
+- Запущен контейнер из /monitoring/prometheus/
+
+```bash
+export USER_NAME=immon
+docker build -t $USER_NAME/prometheus .
+```
+
+- Собраны образы контейнеров используя docker_build.sh скрипты.
+
+```bash
+for i in ui post-py comment; do cd src/$i; bash docker_build.sh; cd -; done
+```
+
+- Сформирован docker/docker-compose.yml:
+
+```yml
+version: '3.3'
+services:
+  post_db:
+    image: mongo:3.2
+    volumes:
+      - post_db:/data/db
+    networks:
+        back_net:
+            aliases:
+                - ${BACK_NET_ALIAS}
+  ui:
+    image: ${USERNAME}/ui:${UI_VERSION}
+    ports:
+      - ${UI_PORT}:${UI_PORT}/tcp
+    networks:
+      - ${NETWORK_FRONT_NET}
+  post:
+    image: ${USERNAME}/post:${POST_VERSION}
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+  comment:
+    image: ${USERNAME}/comment:${COMMENT_VERSION}
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+  prometheus:
+    image: ${USERNAME}/prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=1d'
+  node-exporter:
+    image: prom/node-exporter:v0.15.2
+    user: root
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"'
+
+volumes:
+  post_db:
+  prometheus_data:
+
+networks:
+  back_net:
+    driver: ${NETWORK_BACK_NET_DRIVER}
+    ipam:
+      driver: default
+      config:
+        - subnet: ${NETWORK_BACK_NET_SUBNET}
+  front_net:
+    driver: ${NETWORK_FRONT_NET_DRIVER}
+    ipam:
+      driver: default
+      config:
+        - subnet: ${NETWORK_FRONT_NET_SUBNET}
+
+```
+
+- Сформирован monitoring/prometheus.yml:
+
+```yml
+---
+global:
+  scrape_interval: '5s'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets:
+        - 'localhost:9090'
+
+  - job_name: 'ui'
+    static_configs:
+      - targets:
+        - 'ui:9292'
+
+  - job_name: 'comment'
+    static_configs:
+      - targets:
+        - 'comment:9292'
+
+  - job_name: 'node'
+    static_configs:
+      - targets:
+        - 'node-exporter:9100'
+
+```
+
+- Образы запушены в мой dockerhub <https://hub.docker.com/u/immon>
+
+### Задание со *
+
+- Установлен go1.13.3 linux/amd64.
+
+- Пользуясь открытыми источниками(<https://github.com/percona/mongodb_exporter/blob/v0.11.0/Dockerfile>) написан Dockerfile для экспортера мониторинга MongoDB:
+/monitoring/mongodb_exporter/Dockerfile
+
+```docker
+FROM golang:1.13.10
+
+WORKDIR /go/src/github.com/percona/mongodb_exporter
+
+RUN git clone -b v0.11.0 https://github.com/percona/mongodb_exporter.git ./
+
+RUN make build
+
+FROM prom/busybox:latest
+
+COPY --from=0 /go/src/github.com/percona/mongodb_exporter/bin/mongodb_exporter /bin/mongodb_exporter
+
+EXPOSE 9216
+
+ENTRYPOINT ["/bin/mongodb_exporter"]
+
+```
+
+- Пользуясь открытыми источниками(<https://github.com/google/cloudprober>, <https://cloudprober.org/getting-started/>) созданы наработки по формированию собственного образа cloudprober_exporter - /monitoring/cloudprober_exporter/Dockerfile.0. Текущая же версия использует уже готовый образ:
+/monitoring/cloudprober_exporter/Dockerfile
+
+```dockerfile
+FROM cloudprober/cloudprober:v0.10.7
+COPY cloudprober.cfg /etc/cloudprober.cfg
+
+```
+
+/monitoring/cloudprober_exporter/cloudprober.cfg
+
+```cfg
+probe {
+  name: "ui"
+  type: HTTP
+  targets {
+    host_names: "ui:9292"
+  }
+  interval_msec: 5000  # 5s
+  timeout_msec: 1000   # 1s
+}
+probe {
+  name: "comment"
+  type: HTTP
+  targets {
+    host_names: "comment:9292"
+  }
+  interval_msec: 5000  # 5s
+  timeout_msec: 1000   # 1s
+}
+probe {
+  name: "node-exporter"
+  type: HTTP
+  targets {
+    host_names: "node-exporter:9100"
+  }
+  interval_msec: 5000  # 5s
+  timeout_msec: 1000   # 1s
+}
+probe {
+  name: "mongodb_exporter"
+  type: HTTP
+  targets {
+    host_names: "mongodb_exporter:9216"
+  }
+  interval_msec: 5000  # 5s
+  timeout_msec: 1000   # 1s
+}
+probe {
+  name: "cloudprober_exporter"
+  type: HTTP
+  targets {
+    host_names: "cloudprober_exporter:9313"
+  }
+  interval_msec: 5000  # 5s
+  timeout_msec: 1000   # 1s
+}
+
+```
+
+- Доработаны monitoring/prometheus.yml:
+
+```yml
+---
+global:
+  scrape_interval: '5s'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets:
+        - 'localhost:9090'
+
+  - job_name: 'ui'
+    static_configs:
+      - targets:
+        - 'ui:9292'
+
+  - job_name: 'comment'
+    static_configs:
+      - targets:
+        - 'comment:9292'
+
+  - job_name: 'node'
+    static_configs:
+      - targets:
+        - 'node-exporter:9100'
+
+  - job_name: 'mongodb'
+    static_configs:
+      - targets:
+        - 'mongodb_exporter:9216'
+
+  - job_name: 'cloudprober'
+    scrape_interval: 10s
+    static_configs:
+      - targets:
+        - 'cloudprober_exporter:9313'
+
+```
+
+- Доработан docker/docker-compose.yml:
+
+```yml
+version: '3.8'
+services:
+  post_db:
+    image: mongo:3.2
+    volumes:
+      - post_db:/data/db
+    networks:
+        back_net:
+            aliases:
+                - ${BACK_NET_ALIAS}
+  ui:
+    image: ${USERNAME}/ui:${UI_VERSION}
+    ports:
+      - ${UI_PORT}:${UI_PORT}/tcp
+    networks:
+      - ${NETWORK_FRONT_NET}
+  post:
+    image: ${USERNAME}/post:${POST_VERSION}
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+  comment:
+    image: ${USERNAME}/comment:${COMMENT_VERSION}
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+  prometheus:
+    image: ${USERNAME}/prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=1d'
+  node-exporter:
+    image: prom/node-exporter:latest
+    user: root
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"'
+  mongodb_exporter:
+    image: ${USERNAME}/mongodb_exporter:${MONGODB_EXPORTER_VERSION}
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+    ports:
+      - '9216:9216'
+    networks:
+      - ${NETWORK_BACK_NET}
+  cloudprober_exporter:
+    image: ${USERNAME}/cloudprober_exporter:${CLOUDPROBER_EXPORTER_VERSION}
+    ports:
+      - '9313:9313'
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+
+volumes:
+  post_db:
+  prometheus_data:
+
+networks:
+  back_net:
+    driver: ${NETWORK_BACK_NET_DRIVER}
+    ipam:
+      driver: default
+      config:
+        - subnet: ${NETWORK_BACK_NET_SUBNET}
+  front_net:
+    driver: ${NETWORK_FRONT_NET_DRIVER}
+    ipam:
+      driver: default
+      config:
+        - subnet: ${NETWORK_FRONT_NET_SUBNET}
+
+```
+
+- Проверена работа mongodb_exporter:
+
+```text
+Element
+mongodb_exporter_build_info{goversion="go1.13.10",instance="mongodb_exporter:9216",job="mongodb"}
+
+```
+
+- Проверена работа cloudprober_exporter:
+
+```text
+
+Element
+success{dst="comment:9292",instance="cloudprober_exporter:9313",job="cloudprober",probe="comment",ptype="http"}
+success{dst="ui:9292",instance="cloudprober_exporter:9313",job="cloudprober",probe="ui",ptype="http"}
+success{dst="node-exporter:9100",instance="cloudprober_exporter:9313",job="cloudprober",probe="node-exporter",ptype="http"}
+success{dst="mongodb_exporter:9216",instance="cloudprober_exporter:9313",job="cloudprober",probe="mongodb_exporter",ptype="http"}
+success{dst="cloudprober_exporter:9313",instance="cloudprober_exporter:9313",job="cloudprober",probe="cloudprober_exporter",ptype="http"}
+
+```
+
+- Для реализации makefile понравилось решение в том же cloudprober(<https://github.com/google/cloudprober/blob/master/Makefile>):
+/docker/Makefile
+
+```makefile
+APP_IMAGES := ui post-py comment
+MON_IMAGES := prometheus mongodb_exporter cloudprober_exporter
+DOCKER_COMMANDS := build push
+COMPOSE_COMMANDS := config up down
+COMPOSE_COMMANDS_MON := configmon upmon downmon
+
+ifeq '$(strip $(USER_NAME))' ''
+  $(warning Variable USER_NAME is not defined, using value 'user')
+  USER_NAME := immon
+endif
+
+ENV_FILE := $(shell test -f ../docker/.env && echo '../docker/.env' || echo '../docker/.env.example')
+
+build: $(APP_IMAGES) $(MON_IMAGES)
+
+$(APP_IMAGES):
+ cd ../src/$@; bash docker_build.sh; cd -
+
+$(MON_IMAGES):
+ cd ../monitoring/$@; bash docker_build.sh; cd -
+
+push:
+ifneq '$(strip $(DOCKER_HUB_PASSWORD))' ''
+ @docker login -u $(USER_NAME) -p $(DOCKER_HUB_PASSWORD)
+ $(foreach i,$(APP_IMAGES) $(MON_IMAGES),docker push $(USER_NAME)/$(i);)
+else
+ @echo 'Variable DOCKER_HUB_PASSWORD is not defined, cannot push images'
+endif
+
+$(COMPOSE_COMMANDS):
+ docker-compose --env-file $(ENV_FILE) -f ../docker/docker-compose.yml $(subst up,up -d,$@)
+
+$(COMPOSE_COMMANDS_MON):
+ docker-compose --env-file $(ENV_FILE) -f ../docker/docker-compose-monitoring.yml $(subst mon,,$(subst up,up -d,$@))
+
+$(APP_IMAGES) $(MON_IMAGES) $(DOCKER_COMMANDS) $(COMPOSE_COMMANDS) $(COMPOSE_COMMANDS_MON): FORCE
+
+FORCE:
+
+```
+
+- Написаны docker_build.sh для /monitoring/*.
+
+- В Makefile включены команды build\push для docker, config\up\down для docker-compose, сделаны наработки для отдельного поднятия окружения с контенерами мониторинга используя docker-compose(в задании не использовались).
+
+```bash
+make build --directory=./docker
+make push --directory=./docker
+make up --directory=./docker
+make down --directory=./docker
+
+```
+
 for sale:)
+
 ----------
 [![Build Status](https://img.shields.io/travis/com/Otus-DevOps-2019-11/immon4ik_microservices/master?color=9cf&label=immon4ik&style=plastic)](https://img.shields.io/travis/com/Otus-DevOps-2019-11/immon4ik_microservices/master?color=9cf&label=immon4ik&style=plastic)

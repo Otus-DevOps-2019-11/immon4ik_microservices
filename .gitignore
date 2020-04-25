@@ -44,3 +44,6 @@ api_key.py
 # Gitlab CI
 gitlab-ci/set_env.sh
 gitlab-ci/run_reg_runner.sh
+
+# monitoring-1
+/docker/.env
