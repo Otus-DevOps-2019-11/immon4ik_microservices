@@ -9,15 +9,15 @@ ifeq '$(strip $(USER_NAME))' ''
   USER_NAME := immon
 endif
 
-ENV_FILE := $(shell test -f ../docker/.env && echo '../docker/.env' || echo '../docker/.env.example')
+ENV_FILE := $(shell test -f docker/.env && echo 'docker/.env' || echo 'docker/.env.example')
 
 build: $(APP_IMAGES) $(MON_IMAGES)
 
 $(APP_IMAGES):
-	cd ../src/$@; bash docker_build.sh; cd -
+	cd src/$@; bash docker_build.sh; cd -
 
 $(MON_IMAGES):
-	cd ../monitoring/$@; bash docker_build.sh; cd -
+	cd monitoring/$@; bash docker_build.sh; cd -
 
 push:
 ifneq '$(strip $(DOCKER_HUB_PASSWORD))' ''
@@ -28,10 +28,10 @@ else
 endif
 
 $(COMPOSE_COMMANDS):
-	docker-compose --env-file $(ENV_FILE) -f ../docker/docker-compose.yml $(subst up,up -d,$@)
+	docker-compose --env-file $(ENV_FILE) -f docker/docker-compose.yml $(subst up,up -d,$@)
 
 $(COMPOSE_COMMANDS_MON):
-	docker-compose --env-file $(ENV_FILE) -f ../docker/docker-compose-monitoring.yml $(subst mon,,$(subst up,up -d,$@))
+	docker-compose --env-file $(ENV_FILE) -f docker/docker-compose-monitoring.yml $(subst mon,,$(subst up,up -d,$@))
 
 $(APP_IMAGES) $(MON_IMAGES) $(DOCKER_COMMANDS) $(COMPOSE_COMMANDS) $(COMPOSE_COMMANDS_MON): FORCE
 
