@@ -294,8 +294,8 @@
     "list": []
   },
   "time": {
-    "from": "2020-04-29T13:38:28.062Z",
-    "to": "2020-04-29T15:16:08.612Z"
+    "from": "now-5m",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
