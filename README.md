@@ -517,9 +517,13 @@ volumes:
  - Добавлен блок volumes для каждого из сервисов, указывающий внешнюю папку для хранения файлов приложения. Использование volume позволяет изменять код каждого из приложений, не выполняя сборку образа.
  - Добавлен блок command, который переопределяет CMD в Dockerfile сервиса. Внесенные команды позволят запустить puma для ruby приложений в дебаг режиме с двумя воркерами (флаги --debug и -w 2).
 __Все параметры определены в src/.env__
+
 ## ДЗ №15
-### Основное задание.
-__С предыдущего ДЗ остался хост в gcp с установленными docker, docker-compose, docker-machine.__ __Это ДЗ является отправной точко для выполнения проекта, на основе управляющего хоста будет создан образ и описан в шаблоне packer, для создания инстанса будет использован terraform.__
+
+### Основное задание
+
+__С предидущего ДЗ остался хост в gcp с установленными docker, docker-compose, docker-machine.__ __Это ДЗ является отправной точко для выполнения проекта, на основе управляющего хоста будет создан образ и описан в шаблоне packer, для создания инстанса будет использован terraform.__
+
  - Создана хост docker-gitlab используя docker-machine:
 ```
 export GOOGLE_PROJECT=my_project
@@ -561,7 +565,7 @@ docker-compose -f ./gitlab-ci/docker-compose.yml config
 docker-compose -f ./gitlab-ci/docker-compose.yml up -d
 ```
  - Согласно заданию настроен проект, зарегестрирован gitlab-runner. Отработаны задания по добавлению билда, тестирования, деплоя в .gitlab-ci.yml. Отработаны задания по созданию сред окружения - статических и динамических, их ограничений по типу запуска и обязательным параметрам(пример с tag) в .gitlab-ci.yml.
-### Задание со *.
+### Задание со *
 На основании открытых источников - https://docs.gitlab.com/ee/ci/docker/using_docker_build.html
  - Для выполнения задания сначала сконфигурирован запуск gitlab-runner в безинтерактивном режиме. Написан скрипт, автоматизирующих запуск gitlab-runner на хосте. Т.к. планируется работа c __docker in docker(dind)__ учтена необходимость присутствие сертификатов. Для этого определены сертификаты хоста docker-gitlab и импортированы в переменные(*решение тестовое, не самое безопасное, вижу решение в монтировании volume с сертификатами MOUNT_POINT: /builds/$CI_PROJECT_PATH/mnt_*):
 ```
@@ -1183,8 +1187,505 @@ make build --directory=./docker
 make push --directory=./docker
 make up --directory=./docker
 make down --directory=./docker
+```
+
+## ДЗ №17
+
+### Основное задание
+
+- Создан хост docker-giprometheus используя docker-machine:
+
+```bash
+export GOOGLE_PROJECT=my_project
+docker-machine create --driver google \
+ --google-machine-image "ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20200407" \
+ --google-disk-size "50" --google-disk-type "pd-standard" \
+ --google-machine-type "n1-standard-1" --google-zone europe-west1-b docker-prometheus
+eval $(docker-machine env docker-prometheus)
 
 ```
+
+- Созданы правила firewall открытия портов в проекте immon4ik-docker для выполнения домашнего задания:
+
+```bash
+gcloud compute firewall-rules create cadvisor \
+  --allow tcp:8080 \
+  --target-tags=docker-machine \
+  --description="Allow cAdvisor" \
+  --direction=INGRESS
+
+gcloud compute firewall-rules create grafana \
+  --allow tcp:3000 \
+  --target-tags=docker-machine \
+  --description="Allow Grafana" \
+  --direction=INGRESS
+
+gcloud compute firewall-rules create alertmanager \
+  --allow tcp:9093 \
+  --target-tags=docker-machine \
+  --description="Allow AlertManager" \
+  --direction=INGRESS
+
+```
+
+- Скорректирован docker/docker-compose.yml и сформирован docker/docker-compose-monitiring.yml
+
+```yml
+version: '3.8'
+services:
+  prometheus:
+    image: ${USERNAME}/prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=1d'
+  node-exporter:
+    image: prom/node-exporter:latest
+    user: root
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"'
+  mongodb_exporter:
+    image: ${USERNAME}/mongodb_exporter:${MONGODB_EXPORTER_VERSION}
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+    ports:
+      - '9216:9216'
+    networks:
+      - ${NETWORK_BACK_NET}
+  cloudprober_exporter:
+    image: ${USERNAME}/cloudprober_exporter:${CLOUDPROBER_EXPORTER_VERSION}
+    ports:
+      - '9313:9313'
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+  cadvisor:
+    image: google/cadvisor:${CADVISOR_VERSION}
+    volumes:
+      - '/:/rootfs:ro'
+      - '/var/run:/var/run:rw'
+      - '/sys:/sys:ro'
+      - '/var/lib/docker/:/var/lib/docker:ro'
+    ports:
+      - '8080:8080'
+    networks:
+        - ${NETWORK_FRONT_NET}
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=secret
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+  alertmanager:
+    image: ${USERNAME}/alertmanager:${ALERTMANAGER_VERSION}
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+    ports:
+      - 9093:9093
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  back_net:
+  front_net:
+
+```
+
+- Экспортированы дашборды grafana в monitoring/grafana/dashboards.
+
+- Доработан сценарий формирования prometheus, добавлены джобы для post и cadvisor:
+monitoring/prometheus/prometheus.yml
+
+```yml
+---
+global:
+  scrape_interval: '5s'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets:
+        - 'localhost:9090'
+
+  - job_name: 'ui'
+    static_configs:
+      - targets:
+        - 'ui:9292'
+
+  - job_name: 'comment'
+    static_configs:
+      - targets:
+        - 'comment:9292'
+
+  - job_name: 'node'
+    static_configs:
+      - targets:
+        - 'node-exporter:9100'
+
+  - job_name: 'mongodb'
+    static_configs:
+      - targets:
+        - 'mongodb_exporter:9216'
+
+  - job_name: 'cloudprober'
+    scrape_interval: 10s
+    static_configs:
+      - targets:
+        - 'cloudprober_exporter:9313'
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets:
+          - 'cadvisor:8080'
+
+  - job_name: 'post'
+    static_configs:
+      - targets:
+          - 'post:5000'
+
+rule_files:
+  - 'alerts.yml'
+
+alerting:
+  alertmanagers:
+  - scheme: http
+    static_configs:
+    - targets:
+      - 'alertmanager:9093'
+
+```
+
+- Настроена интеграция Incoming WebHooks - <https://devops-team-otus.slack.com/apps/A0F7XDUAZ-incoming-webhooks?next_id=0> с именем AlertManager в моём канале slack.
+
+- Для алертов добавлены файлы monitoring/alertmanager/* и monitoring/prometheus/alert.yml
+
+- __Замечено отсутствием метрик, указанных в методичке: ui_request_latency_seconds_bucket(как видно из названия - задержка при ответе приложения), была использована метрика ui_request_response_time_bucket; comment_count - до момента создания любого комментария. Принцип создания\экспорта\импорта дашбордов изучен.__
+
+- __Так же считаю, что оповещения в grafana v.6.7.3 уже на достаточно хорошем уровне, что особенно важно для меня добавлена интеграция с telegram.__
+
+- Образы запушены в мой dockerhub <https://hub.docker.com/u/immon>
+
+### Задание со *
+
+- Для удобства работы создан Makefile в корне репо, разделены команды docker-compose для приложения и мониторинга:
+
+```makefile
+APP_IMAGES := ui post-py comment
+MON_IMAGES := prometheus mongodb_exporter cloudprober_exporter alertmanager telegraf
+DOCKER_COMMANDS := build push
+COMPOSE_COMMANDS := config up down
+COMPOSE_COMMANDS_MON := configmon upmon downmon
+
+ifeq '$(strip $(USER_NAME))' ''
+  $(warning Variable USER_NAME is not defined, using value 'user')
+  USER_NAME := immon
+endif
+
+ENV_FILE := $(shell test -f docker/.env && echo 'docker/.env' || echo 'docker/.env.example')
+
+build: $(APP_IMAGES) $(MON_IMAGES)
+
+$(APP_IMAGES):
+ cd src/$@; bash docker_build.sh; cd -
+
+$(MON_IMAGES):
+ cd monitoring/$@; bash docker_build.sh; cd -
+
+push:
+ifneq '$(strip $(DOCKER_HUB_PASSWORD))' ''
+ @docker login -u $(USER_NAME) -p $(DOCKER_HUB_PASSWORD)
+ $(foreach i,$(APP_IMAGES) $(MON_IMAGES),docker push $(USER_NAME)/$(i);)
+else
+ @echo 'Variable DOCKER_HUB_PASSWORD is not defined, cannot push images'
+endif
+
+$(COMPOSE_COMMANDS):
+ docker-compose --env-file $(ENV_FILE) -f docker/docker-compose.yml $(subst up,up -d,$@)
+
+$(COMPOSE_COMMANDS_MON):
+ docker-compose --env-file $(ENV_FILE) -f docker/docker-compose-monitoring.yml $(subst mon,,$(subst up,up -d,$@))
+
+$(APP_IMAGES) $(MON_IMAGES) $(DOCKER_COMMANDS) $(COMPOSE_COMMANDS) $(COMPOSE_COMMANDS_MON): FORCE
+
+FORCE:
+
+```
+
+- Настроено согласно документации <https://docs.docker.com/config/daemon/prometheus/>:
+
+```bash
+docker-machine ssh docker-prometheus sudo vi /etc/docker/daemon.json
+
+```
+
+/etc/docker/demon.json - __в документации указан 127.0.0.1 - с ним не работает, поэтому исправил на 0.0.0.0__
+
+```json
+{
+  "metrics-addr" : "0.0.0.0:9323",
+  "experimental" : true
+}
+
+```
+
+- Перезапущен docker:
+
+```bash
+docker-machine ssh docker-prometheus sudo systemctl restart docker
+
+```
+
+- Настроено согласно документации - <https://docs.influxdata.com/telegraf/v1.14/>:
+monitoring/telegraf/Dockerfile
+
+```dockerfile
+FROM telegraf:1.14.2-alpine
+COPY telegraf.conf /etc/telegraf/
+
+```
+
+monitoring/telegraf/telegraf.conf - получен из <https://github.com/influxdata/telegraf/blob/v1.14.2/etc/telegraf.conf>  и раскомменчены настройки [[inputs.docker]] и [[outputs.prometheus_client]]. Можно было использовать "RUN telegraf config > /etc/telegraf/telegraf.conf" в Dockerfile, но я захотел иметь шаблон конфига у себя в репо.
+
+- Для внедрения сбора метрик docker и telegraf доработан monitoring/prometheus/prometheus.yml:
+
+```yml
+---
+global:
+  scrape_interval: '5s'
+[...]
+  - job_name: 'docker'
+    static_configs:
+      - targets:
+        - 'docker-prometheus:9323'
+
+  - job_name: 'telegraf'
+    static_configs:
+      - targets:
+        - 'telegraf:9273'
+[...]
+
+```
+
+- Доработан docker/docker-compose-monitiring.yml
+
+```yml
+[...]
+  telegraf:
+    image: ${USERNAME}/telegraf:${TELEGRAF_VERSION}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 9273:9273
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+
+```
+
+- Выгружены дашборды DockerSwarmMonitoring.json, Telegraf.json в monitoring/grafana/dashboards/
+
+- На основе открытых источников - <https://awesome-prometheus-alerts.grep.to/rules.html> реализованы некоторые алерты:
+
+monitoring/prometheus/alerts.yml
+
+```yml
+groups:
+    - name: alert.rules
+      rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "Instance {{ $labels.instance }} down"
+          description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minute"
+      - alert: InstanceUp
+        expr: up == 1
+        for: 1m
+        labels:
+          severity: info
+        annotations:
+          summary: "Instance {{$labels.instance}} up"
+          description: "{{$labels.instance}} of job {{$labels.job}} has been up for more than 1 minutes."
+      - alert: PrometheusNotConnectedToAlertmanager
+        expr: prometheus_notifications_alertmanagers_discovered < 1
+        for: 5m
+        labels:
+          severity: error
+        annotations:
+          summary: "Prometheus not connected to alertmanager (instance {{ $labels.instance }})"
+          description: "Prometheus cannot connect the alertmanager\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+```
+
+- Сбилжены\запушены новые образы мониторинга, поднят мониторинг используя отдельную команду из Makefile:
+
+```bash
+make build && make push && make upmon
+
+```
+
+### Задание с **
+
+- Написан monitoring/grafana/Dockerfile:
+
+```dockerfile
+FROM grafana/grafana:6.7.3
+COPY datasources.yml /etc/grafana/provisioning/datasources/
+COPY providers.yml /etc/grafana/provisioning/dashboards/
+COPY ./dashboards/* /etc/grafana/provisioning/dashboards_files/
+
+```
+
+- Написан monitoring/grafana/datasources.yml - <https://grafana.com/docs/grafana/latest/administration/provisioning/>:
+
+```yml
+---
+# config file version
+apiVersion: 1
+
+# list of datasources to insert/update depending
+# what's available in the database
+datasources:
+  # <string, required> name of the datasource. Required
+- name: Prometheus
+    # <string, required> datasource type. Required
+  type: prometheus
+    # <string, required> access mode. proxy or direct (Server or Browser in the UI). Required
+  access: proxy
+    # <int> org id. will default to orgId 1 if not specified
+  orgId: 1
+    # <string> url
+  url: http://prometheus:9090
+    # <bool> mark as default datasource. Max one per org
+  isDefault: true
+  version: 1
+    # <bool> allow users to edit datasources from the UI.
+  editable: true
+
+```
+
+- Написан monitoring/grafana/providers.yml - <https://grafana.com/docs/grafana/latest/administration/provisioning/>:
+
+```yml
+---
+# config file version
+apiVersion: 1
+
+providers:
+  # <string> an unique provider name
+- name: 'immon4ik_dashboards'
+    # <int> org id. will default to orgId 1 if not specified
+  orgId: 1
+    # <string, required> name of the dashboard folder. Required
+  folder: ''
+    # <string> folder UID. will be automatically generated if not specified
+  folderUid: ''
+    # <string, required> provider type. Required
+  type: file
+    # <bool> disable dashboard deletion
+  disableDeletion: false
+    # <bool> enable dashboard editing
+  editable: true
+    # <int> how often Grafana will scan for changed dashboards
+  updateIntervalSeconds: 10
+    # <bool> allow updating provisioned dashboards from the UI
+  allowUiUpdates: false
+  options:
+    # <string, required> path to dashboard files on disk. Required
+    path: /etc/grafana/provisioning/dashboards_files/
+
+```
+
+- Немного доработаны Makefile и docker/docker-compose-monitoring.yml:
+Makefile
+
+```makefile
+[...]
+MON_IMAGES := prometheus mongodb_exporter cloudprober_exporter alertmanager telegraf grafana
+[...]
+
+```
+
+docker/docker-compose-monitoring.yml
+
+```yml
+[...]
+image: ${USERNAME}/grafana:${GRAFANA_VERSION}
+[...]
+
+```
+
+- Реализована отправка оповещений по email - <https://www.robustperception.io/sending-alert-notifications-to-multiple-destinations> и <https://help.mail.ru/mail/mailer/popsmtp>:
+monitoring/alertmanager/config.yml
+
+```yml
+---
+global:
+  slack_api_url: 'https://hooks.slack.com/services/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'
+
+route:
+ receiver: slack-notifications
+
+receivers:
+- name: slack-notifications
+  slack_configs:
+  - channel: '#pavel-batsev'
+    title: "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}"
+    text: "{{ range .Alerts }}{{ .Annotations.description }}\n{{ end }}"
+  email_configs:
+  - to: 'otus@immon.pro'
+    from: 'otus@immon.pro'
+    smarthost: 'smtp.mail.ru:465'
+    auth_username: 'otus@immon.pro'
+    auth_password: 'Trewq123'
+    send_resolved: true
+    require_tls: false
+    headers:
+      Subject: "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}"
+
+```
+
+- Сбилжены\запушены новые образы мониторинга, поднят мониторинг используя отдельную команду из Makefile:
+
+```bash
+make build && make push && make upmon
+
+```
+
+### Задание с ***
+
+- _Используя связку Autoheal + AWX, реализуйте автоматическое исправление проблем (например рестарт одного из микросервисов при падении)_ - не реализовывалось, т.к. считаю в рамках ДЗ избыточным, планирую выполнить в рамках проекта - <https://github.com/immon4ik/immon4ik_project>
 
 for sale:)
 
