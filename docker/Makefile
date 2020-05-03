@@ -1,4 +1,4 @@
-APP_IMAGES := ui post-py comment
+APP_IMAGES := ui post comment
 MON_IMAGES := prometheus mongodb_exporter cloudprober_exporter alertmanager telegraf grafana
 DOCKER_COMMANDS := build push
 COMPOSE_COMMANDS := config up down
@@ -14,7 +14,7 @@ ENV_FILE := $(shell test -f ../docker/.env && echo '../docker/.env' || echo '../
 build: $(APP_IMAGES) $(MON_IMAGES)
 
 $(APP_IMAGES):
-	cd ../src/$@; bash docker_build.sh; cd -
+	cd ../src/$(subst post,post-py,$@); bash docker_build.sh; cd -
 
 $(MON_IMAGES):
 	cd ../monitoring/$@; bash docker_build.sh; cd -

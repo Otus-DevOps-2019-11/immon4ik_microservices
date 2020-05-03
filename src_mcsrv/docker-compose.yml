@@ -1,0 +1,46 @@
+version: '3.3'
+services:
+  post_db:
+    image: mongo:3.2
+    volumes:
+      - post_db:/data/db
+    networks:
+        back_net:
+            aliases:
+                - ${BACK_NET_ALIAS}
+  ui:
+    build: ${SERVICE_UI_BUILD}
+    image: ${USERNAME}/ui:${UI_VERSION}
+    ports:
+      - ${UI_PORT}:${UI_PORT}/tcp
+    networks:
+      - ${NETWORK_FRONT_NET}
+  post:
+    build: ${SERVICE_POST_BUILD}
+    image: ${USERNAME}/post:${POST_VERSION}
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+  comment:
+    build: ${SERVICE_COMMENT_BUILD}
+    image: ${USERNAME}/comment:${COMMENT_VERSION}
+    networks:
+      - ${NETWORK_BACK_NET}
+      - ${NETWORK_FRONT_NET}
+
+volumes:
+  post_db:
+
+networks:
+  back_net:
+    driver: ${NETWORK_BACK_NET_DRIVER}
+    ipam:
+      driver: default
+      config:
+        - subnet: ${NETWORK_BACK_NET_SUBNET}
+  front_net:
+    driver: ${NETWORK_FRONT_NET_DRIVER}
+    ipam:
+      driver: default
+      config:
+        - subnet: ${NETWORK_FRONT_NET_SUBNET}

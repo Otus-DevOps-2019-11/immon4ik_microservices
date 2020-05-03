@@ -2,18 +2,18 @@ version: '3.3'
 
 services:
   ui:
-    command: ${SERVICE_UI_COMMAND}
+    command: puma --debug -w 2
     volumes:
-      - ${UI_VOLUME_NAME}:${UI_VOLUME_DEST}
+      - app_ui:/app
 
   post:
     volumes:
-      - ${POST_VOLUME_NAME}:${POST_VOLUME_DEST}
+      - app_post:/app
 
   comment:
-    command: ${SERVICE_COMMENT_COMMAND}
+    command: puma --debug -w 2
     volumes:
-      - ${COMMENT_VOLUME_NAME}:${COMMENT_VOLUME_DEST}
+      - app_comment:/app
 
 volumes:
   app_ui:
