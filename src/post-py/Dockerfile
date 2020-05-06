@@ -1,13 +1,18 @@
 FROM python:3.6.0-alpine
 
-WORKDIR /app
-COPY . /app
-
-RUN apk --no-cache --update add build-base=0.4-r1 \
-    && pip install -r /app/requirements.txt \
-    && apk del build-base
-
 ENV POST_DATABASE_HOST post_db
 ENV POST_DATABASE posts
+ENV APP_HOME /app
 
-ENTRYPOINT ["python3", "post_app.py"]
+WORKDIR $APP_HOME
+
+# Install requiremets (fat layer)
+COPY requirements.txt $APP_HOME
+RUN apk add --no-cache --virtual .build-deps gcc musl-dev \
+    && pip install --no-cache-dir -r $APP_HOME/requirements.txt \
+    && apk del .build-deps
+
+# Application (frequently changing layer)
+COPY . $APP_HOME
+
+CMD ["python3", "post_app.py"]
