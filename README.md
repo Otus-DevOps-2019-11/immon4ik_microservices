@@ -2841,7 +2841,7 @@ vboxmanage controlvm "minikube" natpf1 "app,tcp,,9292,,32092"
 
 -Сделан скриншот приложения kubernetes/screenshot/reddit-app.png:
 
-![reddit-app](https://github.com/immon4ik/otus_2019/blob/kubernetes-2/kubernetes/screenshot/reddit-app.png?raw=true)
+![reddit-app](https://github.com/Otus-DevOps-2019-11/immon4ik_microservices/blob/kubernetes-2/kubernetes/screenshot/reddit-app.png?raw=true)
 
 И сформировано правило firewall:
 
@@ -3411,7 +3411,7 @@ curl http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https
 
 - Получили рабочий дашборд, в который можно авторизоваться, используя сгенерированный токен service-controller-token-*
 
-![k8s-dashboard-localhost](https://github.com/immon4ik/otus_2019/blob/kubernetes-2/kubernetes/screenshot/k8s-dashboard-localhost.png?raw=true)
+![k8s-dashboard-localhost](https://github.com/Otus-DevOps-2019-11/immon4ik_microservices/blob/kubernetes-2/kubernetes/screenshot/k8s-dashboard-localhost.png?raw=true)
 
 - Погасим кластер:
 
