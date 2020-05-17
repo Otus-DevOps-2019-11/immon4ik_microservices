@@ -58,6 +58,9 @@
   - [ДЗ №18](#дз-18)
     - [Основное задание](#основное-задание-12)
     - [Задание со *](#задание-со--9)
+  - [ДЗ №19](#дз-19)
+    - [Основное задание](#основное-задание-13)
+    - [Задание со *](#задание-со--10)
 
 # immon4ik_infra
 
@@ -2649,6 +2652,85 @@ make build && make push && make upbug
 POST
 db_find_single_post
 [3.357ms]
+
+```
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+## ДЗ №19
+
+### Основное задание
+
+<details>
+  <summary>ДЗ №19. Основное задание.</summary>
+
+- Выполнен туториал "сложного пути" до шага Cleaning Up. Разобраны особенности инсталяции. Еще раз убедился в удобстве tmux, для себя подчерпнул возможность синхронизации выполнения команд\скриптов в разных панелях - <https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/01-prerequisites.md>.
+
+- Написаны манифесты и сохранены в kubernetes/reddit. Подняты поды с микросервисами приложения:
+
+```bash
+kubectl apply -f kubernetes/reddit/mongo-deployment.yml
+kubectl apply -f kubernetes/reddit/post-deployment.yml
+kubectl apply -f kubernetes/reddit/comment-deployment.yml
+kubectl apply -f kubernetes/reddit/ui-deployment.yml
+
+```
+
+> output
+
+```bash
+deployment.apps/mongo-deployment created
+deployment.apps/post-deployment created
+deployment.apps/comment-deployment created
+deployment.apps/ui-deployment created
+
+```
+
+- Проверен статус под:
+
+```bash
+kubectl get pods
+
+```
+
+> output
+
+```bash
+NAME                                  READY   STATUS    RESTARTS   AGE
+busybox                               1/1     Running   0          35m
+comment-deployment-6d9798fc9b-79fcz   1/1     Running   0          26s
+mongo-deployment-86d49445c4-ht6ct     1/1     Running   0          67s
+nginx-554b9c67f9-ztr7k                1/1     Running   0          32m
+post-deployment-76648c64c6-bgmbd      1/1     Running   0          43s
+ui-deployment-58985d7644-njhn8        1/1     Running   0          13s
+
+```
+
+- Удален кластер, используя шаг Cleaning Up.
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+### Задание со *
+
+<details>
+  <summary>ДЗ №19. Задание со *.</summary>
+
+- На основе открытых источников рассмотрены различные варианты реализации. Вариант 1 - <https://github.com/pythops/Kubernetes-the-hard-way-with-Ansible> решил не реализовывать, т.к. используется не gcp, а vagrant и я не располагаю физическим\виртуальным железом для его работы, а облачный вариант, который был реализован в рамках ДЗ №11 - <https://github.com/Otus-DevOps-2019-11/immon4ik_infra/tree/ansible-4> показался мне избыточным.
+
+- За основу было взято решение - <https://github.com/jugatsu/kubernates-the-hard-way-using-only-ansible>. Репо был форкнут - <https://github.com/immon4ik/kubernates-the-hard-way-using-only-ansible>.
+
+- Плейбуки реализации были рассмотрены и требуют кастомизации. После этого можно использовать готовые плейбуки из репо. Также есть вариант с переработкой репо в роль thw. Основная идея: используя среды окружения, роли и сводный плейбук развернуть всё описанное в туториале. Сформировани каркас решения задачи, основные наработки и архитектура реализации добавлены в kubernetes/ansible.
+
+kubernetes/ansible/requirements.
+
+```yml
+---
+- src: https://github.com/immon4ik/kubernates-the-hard-way-using-only-ansible.git
+  name: thw
 
 ```
 

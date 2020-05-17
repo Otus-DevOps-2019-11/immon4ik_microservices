@@ -1,0 +1,3 @@
+---
+- src: https://github.com/immon4ik/kubernates-the-hard-way-using-only-ansible.git
+  name: thw
