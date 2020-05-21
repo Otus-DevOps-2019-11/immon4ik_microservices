@@ -29,18 +29,18 @@
     - [Задание с **](#задание-с--2)
   - [ДЗ №11](#дз-11)
     - [Основное задание](#основное-задание-5)
-    - [Задание со *. Часть 1](#задание-со--часть-1)
-    - [Основное задание. Тестирование ролей](#основное-задание-тестирование-ролей)
-    - [Задание со *. Часть 2](#задание-со--часть-2)
+    - [Задание со *. Часть 1.](#задание-со--часть-1)
+    - [Основное задание. Тестирование ролей.](#основное-задание-тестирование-ролей)
+    - [Задание со *. Часть 2.](#задание-со--часть-2)
 - [immon4ik_microservices](#immon4ik_microservices)
   - [ДЗ №12](#дз-12)
     - [Основное задание](#основное-задание-6)
-    - [Задание со *. Часть 1](#задание-со--часть-1-1)
-    - [Задание со *. Часть 2](#задание-со--часть-2-1)
+    - [Задание со *. Часть 1.](#задание-со--часть-1-1)
+    - [Задание со *. Часть 2.](#задание-со--часть-2-1)
   - [ДЗ №13](#дз-13)
     - [Основное задание](#основное-задание-7)
-    - [Задание со *. Часть 1](#задание-со--часть-1-2)
-    - [Задание со *. Часть 2](#задание-со--часть-2-2)
+    - [Задание со *. Часть 1.](#задание-со--часть-1-2)
+    - [Задание со *. Часть 2.](#задание-со--часть-2-2)
   - [ДЗ №14](#дз-14)
     - [Основное задание](#основное-задание-8)
     - [Задание со *](#задание-со--5)
@@ -64,6 +64,11 @@
   - [ДЗ №20](#дз-20)
     - [Основное задание](#основное-задание-14)
     - [Задание со *](#задание-со--11)
+  - [ДЗ №21](#дз-21)
+    - [Основное задание](#основное-задание-15)
+    - [Задание со *](#задание-со--12)
+    - [Основное задание. NetworkPolicy.](#основное-задание-networkpolicy)
+    - [Основное задание. Хранилище для базы.](#основное-задание-хранилище-для-базы)
 
 # immon4ik_infra
 
@@ -644,7 +649,7 @@ ansible/playbooks/deploy.yml - доработан плейбук деплоя п
 
 </details>
 
-### Задание со *. Часть 1
+### Задание со *. Часть 1.
 
 <details>
   <summary>ДЗ №11. Задание со *. Часть 1.</summary>
@@ -689,7 +694,7 @@ ansible.extra_vars = {
 
 </details>
 
-### Основное задание. Тестирование ролей
+### Основное задание. Тестирование ролей.
 
 <details>
   <summary>ДЗ №11. Основное задание. Тестирование ролей.</summary>
@@ -730,7 +735,7 @@ def test_mongo_port_is_open(host):
 
 </details>
 
-### Задание со *. Часть 2
+### Задание со *. Часть 2.
 
 <details>
   <summary>ДЗ №11. Задание со *. Часть 2.</summary>
@@ -805,7 +810,7 @@ custom build status badge
 
 </details>
 
-### Задание со *. Часть 1
+### Задание со *. Часть 1.
 
 <details>
   <summary>ДЗ №12. Задание со *. Часть 1.</summary>
@@ -819,7 +824,7 @@ docker inspect <u_image_id> - сводная по образу, включает
 
 </details>
 
-### Задание со *. Часть 2
+### Задание со *. Часть 2.
 
 <details>
   <summary>ДЗ №12. Задание со *. Часть 2.</summary>
@@ -866,7 +871,7 @@ src/ui/Dockerfile - вариант сохранен в Dockerfile.1, испол�
 
 </details>
 
-### Задание со *. Часть 1
+### Задание со *. Часть 1.
 
 <details>
   <summary>ДЗ №13. Задание со *. Часть 1.</summary>
@@ -884,7 +889,7 @@ docker run -d --network=reddit -p 9292:9292 -e POST_SERVICE_HOST=post2 -e COMMEN
 
 </details>
 
-### Задание со *. Часть 2
+### Задание со *. Часть 2.
 
 <details>
   <summary>ДЗ №13. Задание со *. Часть 2.</summary>
@@ -2841,7 +2846,7 @@ vboxmanage controlvm "minikube" natpf1 "app,tcp,,9292,,32092"
 
 -Сделан скриншот приложения kubernetes/screenshot/reddit-app.png:
 
-![reddit-app](https://github.com/Otus-DevOps-2019-11/immon4ik_microservices/blob/kubernetes-2/kubernetes/screenshot/reddit-app.png?raw=true)
+![reddit-app](https://github.com/immon4ik/otus_2019/blob/kubernetes-2/kubernetes/screenshot/reddit-app.png?raw=true)
 
 И сформировано правило firewall:
 
@@ -3411,11 +3416,487 @@ curl http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https
 
 - Получили рабочий дашборд, в который можно авторизоваться, используя сгенерированный токен service-controller-token-*
 
-![k8s-dashboard-localhost](https://github.com/Otus-DevOps-2019-11/immon4ik_microservices/blob/kubernetes-2/kubernetes/screenshot/k8s-dashboard-localhost.png?raw=true)
+![k8s-dashboard-localhost](https://github.com/immon4ik/otus_2019/blob/kubernetes-2/kubernetes/screenshot/k8s-dashboard-localhost.png?raw=true)
 
 - Погасим кластер:
 
 ```powershell
+terraform destroy --auto-approve
+
+```
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+## ДЗ №21
+
+### Основное задание
+
+<details>
+  <summary>ДЗ №21. Основное задание.</summary>
+
+- Поднят кластер:
+
+```powershell
+cd kubernetes/extra-k8s-2/terraform-gke-cluster/
+terraform fmt
+terraform init
+terraform apply --auto-approve
+gcloud container clusters get-credentials immon4ik-k8s-gke --region europe-west3
+
+```
+
+- Поднята рабочее приложение с namespase dev:
+
+```powershell
+
+cd kubernetes/reddit/
+kubectl apply  -f kubernetes/reddit/ -n dev
+
+```
+
+- Выполнив все практические задания, сформирован сертификат и ключ, ingress сценарий балансировщика, обновлён ui-service:
+
+kubernetes/reddit/ui-service.yml
+
+```yml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+  labels:
+    app: reddit
+    component: ui
+spec:
+  type: NodePort
+  ports:
+    - port: 9292
+      protocol: TCP
+      targetPort: 9292
+  selector:
+    app: reddit
+    component: ui
+
+```
+
+kubernetes/reddit/ui-ingress.yml
+
+```yml
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ui
+  annotations:
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  tls:
+  - secretName: ui-ingress
+  backend:
+    serviceName: ui
+    servicePort: 9292
+
+```
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+### Задание со *
+
+<details>
+  <summary>ДЗ №21. Задание со *.</summary>
+
+- Используя <https://kubernetes.io/docs/concepts/services-networking/ingress/>, сформирован создаваемый объект Secret в виде Kubernetes-манифеста. Согласно условию ввода значения сертификата и ключа в формате "base64 encoded cert/key", преобразован их вывод:
+
+```powershell
+openssl base64 -e -A -in tls.crt
+openssl base64 -e -A -in tls.key
+
+```
+
+- Вывод внесен в манифест:
+
+kubernetes/extra-k8s-3/tls-secret.yml
+
+```yml
+---
+apiVersion: v1
+kind: Secret
+metadata:
+    name: ui-extra-ingress
+    namespace: dev
+    selfLink: /api/v1/namespaces/dev/secrets/ui-ingress
+data:
+    tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURNakNDQWhxZ0F3SUJBZ0lKQUpvSzJITzU3WlpjTUEwR0NTcUdTSWIzRFFFQkJRVUFNQm94R0RBV0JnTlYKQkFNVER5QXpOUzR5TWpjdU1qTTJMakUwTmpBZUZ3MHlNREExTVRjeE5EVXpNRGRhRncweU1UQTFNVGN4TkRVegpNRGRhTUJveEdEQVdCZ05WQkFNVER5QXpOUzR5TWpjdU1qTTJMakUwTmpDQ0FTSXdEUVlKS29aSWh2Y05BUUVCCkJRQURnZ0VQQURDQ0FRb0NnZ0VCQU5qVnVJRnpUZlRiME5MekZXc1FoL2RmY1lWSkIzcUptaGFHV3J6eFlmR04KRXhoYU5EVVRmL1Fna211UEUxVTlxTmlzYVRUUTdsblNNTVRUNmNVQnlsMS9ZMHJlVXBCK2picXp2eTY1aUo1TQpEMEg1NSsxdncyNDBXc1llbS90emRHM252TlBUaVJPQ0QrRmNraklKWGhIREV4Vyt4SnRVWmV5WlRnU3BGWnhBCkRZeFBVaENncFdBTjljRE1yRTRLU2hYQjBpaVc2T0hFMTlsOVhaVDBmWktKcE9saWJUL3JVSDlHQVJYSG1JM0MKeDFhSUt0NERHQ3JkWUZ5U1JvNndiTmh3WXhGYXpFQ3VWYXFOajF6OFJUY0JzT3l0b1dPVHJ0OGFJYXBSVTZQdgo4QUp3NHhPV3dxSmZMeEk3K2JSNTZ0NXhZSHZwZzQrS0E2NUxRc0hZOHhNQ0F3RUFBYU43TUhrd0hRWURWUjBPCkJCWUVGUERqSTc2Yk1QSGhEc1phS0FJMDdFdXplUVNzTUVvR0ExVWRJd1JETUVHQUZQRGpJNzZiTVBIaERzWmEKS0FJMDdFdXplUVNzb1I2a0hEQWFNUmd3RmdZRFZRUURFdzhnTXpVdU1qSTNMakl6Tmk0eE5EYUNDUUNhQ3Roegp1ZTJXWERBTUJnTlZIUk1FQlRBREFRSC9NQTBHQ1NxR1NJYjNEUUVCQlFVQUE0SUJBUUJLLzRIckNOWDY3MjlaCmVJc1YzWndkZTlMaGtZendNUmlVMVdxYkN2RjhZVjAxM1pHYzQxVHhIbE4xbHdFZnpQTXBGMkZUMUdnRXZnMUsKd3pBYkt3YUl1QUZlajRpMGJOVDg5aFpTME9RU1JxOEFrbmVPM0NLV1BSSCtWazRnU3ZJVHBDamtmWHFXMldVYwpEVEpXL2ZPTlpvamFid3pFTHdKT2tiS1V5cnlKK2VtUkZTYy9XSWpGZVgzdXZsbjc5WEZRbHRiZ0l6VnRkaTRuCjBrVmg2RFJqTllEK0VCUFJvNjlLSVJ2dkFoRmNDRmxRY0p1Y0UyNm14cFczZ09DbEZwRVNpbXRpeE12bnYvREkKTTMzaHVMQkk4VlhvRnpvWFVOcm0rbmN1aGFIb015ekh1dWcwbnFNb2EzSk0yS29VL1psOWNrU1JTSUFGUy9SNAozMit6NjdXOQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    tls.key: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBMk5XNGdYTk45TnZRMHZNVmF4Q0g5MTl4aFVrSGVvbWFGb1phdlBGaDhZMFRHRm8wCk5STi85Q0NTYTQ4VFZUMm8yS3hwTk5EdVdkSXd4TlBweFFIS1hYOWpTdDVTa0g2TnVyTy9Mcm1Jbmt3UFFmbm4KN1cvRGJqUmF4aDZiKzNOMGJlZTgwOU9KRTRJUDRWeVNNZ2xlRWNNVEZiN0VtMVJsN0psT0JLa1ZuRUFOakU5UwpFS0NsWUEzMXdNeXNUZ3BLRmNIU0tKYm80Y1RYMlgxZGxQUjlrb21rNldKdFArdFFmMFlCRmNlWWpjTEhWb2dxCjNnTVlLdDFnWEpKR2pyQnMySEJqRVZyTVFLNVZxbzJQWFB4Rk53R3c3SzJoWTVPdTN4b2hxbEZUbysvd0FuRGoKRTViQ29sOHZFanY1dEhucTNuRmdlK21EajRvRHJrdEN3ZGp6RXdJREFRQUJBb0lCQUZpSTB5QVArMm1hQXliTwoyQlR5R0FJYU4xakxtOEVkeEF1a2FoSXhvT01temdBb2ZKNmJTcWhjVUV5WWk3VkhTdFRGZU9OMjE0dFhObEIzCmtrQzlYV3BWcEM0aW5xV2U5ckdmeU5VRUxsTXNEU0xNTGpXVlo3OXNvdyszMmNxT3RxQlZlWlVvRHhVbkN1TGkKa0ZMYjNrdjBVYXVVUytSOFRtMlBudnBxSzRlekl5eHZHOWh2Y3I1blFPeG5DZHJ1bkRXZ0JnZmpadk8vQkZGZApJdDdEKzVKblI2cUo3QjE0WWFpaEhDQXFIQjhzREZYZkFyS1QySmtRcC9Ubjd2RlZOdU5xcC9CbGpkM3R0ZE9IClg4WnZwbmF2cUoxbDJoZDhiNDlUMDlGdVRXc3RvOU9CVUdzU1duTXpuVW5BbEdHRXJMa0YxU1JJY2NqSUhFcjIKdGcvTE9Ra0NnWUVBN2QwbVpiaU9aOERLa2NrT09IbmUrRnNXeTAzc1Iyd1VMNG5tZ0hac3hiM0l0SzZzR05YdwphK1RLb21FQ3F1M2JrMEsrVEV0ZUQ2MFB1a2V0WmRScUxFaHJPY3BlcDM0M0d4UGM4dmRMbGFvS3JJU0VqWEdLCnU2WW9xcEV4QWlQRnpGZWZPOTVRUnBmS0oxcGx1UzF4OE5aMlhKMVNtcDVDYzljcjU5OUlHYWNDZ1lFQTZWNGIKU2FublN4V0ozZFY1ekZBbXhnenc0eXVxUk1penZ6aE1tQWM2QmJPazViQTU0S2tkM2tValZvRXptRmZCK1U4Swozdk1yVWx1dEJCU1I0SWlqMVUvWEliQzBLTytNaEhzYlRxLzBLWEJndjFmVFNYenViaVpEMWFvTFNyUWN0NHFDCm9hcEtPdEdTa1JoTkRWOVk1Qmpqc3ZZWmFUajVoaS9IVnV0a3NMVUNnWUVBcVgvVzlkT08vdFkrUTZhL0VIV2YKOHVDT0hLL1plSWZHMXAxdytRZnF1UHBsaElPWU5WWjJyWnZxM2MwOVptcDY5clF3QVJRUDRpSFR2RTJKZmEvaApQTThhUWFNNDBpZzV3bnprRE9zMkhGK0FuYkVNOS9INkIzLy9LSlN3RkxOREp6c2xTRGRDZ3h0MVBaZklOeTN3CkxNdldxbWFkVDNzSkpaMG1OMlEvNzY4Q2dZQUJLRU5RWVRSUmJnRHFCYlg5Nm1QVzFaZVlPTTQyV3h4eEZWRmoKNjUxQkMvd0VXNVJkNWRqTkVtQ3pmQjZLWWQwSFpIbjBVeFppNlN0NWVyU2lmV3I2a3RQSlNmd0t1KzFoZHM3UwozQktFNWhiRXZDWERGb2lFS1ZKcXk5WVVmOElvc3Rvay9SZ3pKSGpxbVVsQWlMbURJQkI1QWJsc2lTakxubzhKCmdrOVVoUUtCZ1FDdU5ERERlTVdvSkZQUHdZbmhMSEI5NWl4Kzdnak96VDVuQ2s1NXlXeTBUR2p0REhqYUs4LzgKWDJtRmpmZG1HVWc5SEVpekNCZER5U0NZeDRyVlFucGFDWTlreTQweDl4bzQvRDIvTU5kWnlSWXM2VitETnJmYgpWVkMvdEVsbmtGRk15U0hhMjh6YWRvSkxmOFJJOHlYbXgrdHIvWDArQ1BrVjRNckxyMklIR0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
+type: kubernetes.io/tls
+
+```
+
+- Проверено создание секрета:
+
+```powershell
+kubectl describe secret ui-extra-ingress -n dev
+
+```
+
+- Создан сценарий ingress с новым значением secret:
+
+kubernetes/extra-k8s-3/ui-extra-ingress.yml
+
+```yml
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ui
+  annotations:
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  tls:
+  - secretName: ui-extra-ingress
+  backend:
+    serviceName: ui
+    servicePort: 9292
+
+```
+
+- Удален старый и поднят новый ingress, проверена работа приложения:
+
+```powershell
+cd kubernetes/extra-k8s-3/
+kubectl delete ingress ui -n dev
+kubectl apply -f ui-extra-ingress.yml -n dev
+curl -I -k https://my-balancer-ip/
+
+```
+
+>outputs
+
+```outputs
+HTTP/2 200
+content-type: text/html;charset=utf-8
+x-xss-protection: 1; mode=block
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+set-cookie: rack.session=BAh7CEkiD3Nlc3Npb25faWQGOgZFVEkiRTg0MDUwYWI0ZWE1MDk5MDZhYzE1%0AMjBhMjc5ZTFkYTA3NWZkYTQ0MDJmZGJjMjIyZWJlMGIxNzQ4ZGY5NGYyNDQG%0AOwBGSSIJY3NyZgY7AEZJIjFQYVlnT1R3YjQxdjVoVlM1dnFZRVdOcDVNZVEx%0AMVR5WElVazMyU2F5RHZrPQY7AEZJIg10cmFja2luZwY7AEZ7B0kiFEhUVFBf%0AVVNFUl9BR0VOVAY7AFRJIi0yZmMzODhiMmQzNjVkOTZlMDA1MjQ4OWQ0Mjg0%0AMjUzNDBkMjNmNmE0BjsARkkiGUhUVFBfQUNDRVBUX0xBTkdVQUdFBjsAVEki%0ALWRhMzlhM2VlNWU2YjRiMGQzMjU1YmZlZjk1NjAxODkwYWZkODA3MDkGOwBG%0A--d7d6100f3a7728731ede4a1f63112b76f3ae6244; path=/; HttpOnly
+content-length: 2765
+date: Sun, 17 May 2020 17:46:54 GMT
+via: 1.1 google
+alt-svc: clear
+
+```
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+### Основное задание. NetworkPolicy.
+
+<details>
+  <summary>ДЗ №21. Основное задание. NetworkPolicy.</summary>
+
+- Включена network-policy для GKE:
+
+```powershell
+gcloud container clusters update immon4ik-k8s-gke --zone=europe-west3 --update-addons=NetworkPolicy=ENABLED
+gcloud container clusters update immon4ik-k8s-gke --zone=europe-west3  --enable-network-policy
+
+```
+
+- Доработан манифест networkpolicy, согласно заданию:
+
+kubernetes/reddit/mongo-network-policy.yml
+
+```yml
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-db-traffic
+  labels:
+    app: reddit
+spec:
+  podSelector:
+    matchLabels:
+      app: reddit
+      component: mongo
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          component: comment
+    - podSelector:
+        matchLabels:
+          component: post
+
+```
+
+-
+
+```powershell
+cd kubernetes/reddit/
+kubectl apply -f mongo-network-policy.yml -n dev
+
+```
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+### Основное задание. Хранилище для базы.
+
+<details>
+  <summary>ДЗ №21. Основное задание. Хранилище для базы.</summary>
+
+- Создан диск в Google Cloud:
+
+```powershell
+gcloud compute disks create --size=25GB --zone=europe-west3-b reddit-mongo-disk
+
+```
+
+- Доработан манифест деплоймента базы с использованием gcePersistentDisk:
+
+kubernetes/reddit/mongo-deployment.yml
+
+```yml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  labels:
+    app: reddit
+    component: mongo
+    post-db: "true"
+    comment-db: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reddit
+      component: mongo
+  template:
+    metadata:
+      name: mongo
+      labels:
+        app: reddit
+        component: mongo
+        post-db: "true"
+        comment-db: "true"
+    spec:
+      containers:
+      - image: mongo:3.2
+        name: mongo
+        volumeMounts:
+        - name: mongo-gce-pd-storage
+          mountPath: /data/db
+      volumes:
+      - name: mongo-persistent-storage
+        emptyDir: {}
+        volumes:
+      - name: mongo-gce-pd-storage
+        gcePersistentDisk:
+          pdName: reddit-mongo-disk
+          fsType: ext4
+
+```
+
+- Выполнены все задания, чтобы использовать Volume gcePersistentDisk. Полезные команды:
+
+```powershell
+cd kubernetes/reddit/
+kubectl delete -f mongo-deployment.yml -n dev
+kubectl apply -f mongo-deployment.yml -n dev
+
+```
+
+- Создан манифест PersistentVolume:
+
+kubernetes/reddit/mongo-volume.yml
+
+```yml
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: reddit-mongo-disk
+spec:
+  capacity:
+    storage: 25Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  gcePersistentDisk:
+    fsType: "ext4"
+    pdName: "reddit-mongo-disk"
+
+```
+
+- Создан манифест PersistentVolumeClaim:
+
+kubernetes/reddit/mongo-claim.yml
+
+```yml
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mongo-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 15Gi
+
+```
+
+- Доработан манифест деплоймента базы используя статический persistentVolumeClaim:
+
+kubernetes/reddit/mongo-deployment.yml
+
+```yml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  labels:
+    app: reddit
+    component: mongo
+    post-db: "true"
+    comment-db: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reddit
+      component: mongo
+  template:
+    metadata:
+      name: mongo
+      labels:
+        app: reddit
+        component: mongo
+        post-db: "true"
+        comment-db: "true"
+    spec:
+      containers:
+      - image: mongo:3.2
+        name: mongo
+        volumeMounts:
+        - name: mongo-gce-pd-storage
+          mountPath: /data/db
+      volumes:
+      - name: mongo-gce-pd-storage
+        persistentVolumeClaim:
+          claimName: mongo-pvc
+
+```
+
+- Создан манифест StorageClass с использованием ssd-диска:
+
+kubernetes/reddit/storage-fast.yml
+
+```yml
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1beta1
+metadata:
+  name: fast
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-ssd
+
+```
+
+- Создан манифест PersistentVolumeClaim с использованием StorageClass:
+
+kubernetes/reddit/mongo-claim-dynamic.yml
+
+```yml
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mongo-pvc-dynamic
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fast
+  resources:
+    requests:
+      storage: 10Gi
+
+```
+
+- Доработан манифест деплоймента базы используя динамический persistentVolumeClaim:
+
+kubernetes/reddit/mongo-deployment.yml
+
+```yml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  labels:
+    app: reddit
+    component: mongo
+    post-db: "true"
+    comment-db: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reddit
+      component: mongo
+  template:
+    metadata:
+      name: mongo
+      labels:
+        app: reddit
+        component: mongo
+        post-db: "true"
+        comment-db: "true"
+    spec:
+      containers:
+      - image: mongo:3.2
+        name: mongo
+        volumeMounts:
+        - name: mongo-gce-pd-storage
+          mountPath: /data/db
+      volumes:
+      - name: mongo-gce-pd-storage
+        persistentVolumeClaim:
+          claimName: mongo-pvc-dynamic
+
+```
+
+- Выполнены все задания, чтобы использовать PersistentVolume. Полезные команды:
+
+```powershell
+cd kubernetes/reddit/
+kubectl apply -f mongo-volume.yml -n dev
+kubectl apply -f mongo-claim.yml -n dev
+kubectl apply -f storage-fast.yml -n dev
+kubectl apply -f mongo-claim-dynamic.yml -n dev
+kubectl apply -f mongo-deployment.yml -n dev
+kubectl get persistentvolume -n dev
+
+```
+
+- Погашен кластер:
+
+```powershell
+cd kubernetes/extra-k8s-2/terraform-gke-cluster/
 terraform destroy --auto-approve
 
 ```
