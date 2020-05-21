@@ -61,6 +61,9 @@
   - [ДЗ №19](#дз-19)
     - [Основное задание](#основное-задание-13)
     - [Задание со *](#задание-со--10)
+  - [ДЗ №20](#дз-20)
+    - [Основное задание](#основное-задание-14)
+    - [Задание со *](#задание-со--11)
 
 # immon4ik_infra
 
@@ -2731,6 +2734,689 @@ kubernetes/ansible/requirements.
 ---
 - src: https://github.com/immon4ik/kubernates-the-hard-way-using-only-ansible.git
   name: thw
+
+```
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+## ДЗ №20
+
+### Основное задание
+
+<details>
+  <summary>ДЗ №20. Основное задание.</summary>
+
+- Наработки плейбуков из задания со * ДЗ№19 перенесены в каталог kubernetes/exta-k8s-1
+
+__Настроена и использовалась инфраструктура с вложенной виртуализацией - <https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances#starting_a_nested_vm>, для этого настроен образ на базе centos с лицензией, позволяющей виртуализацию:__
+
+```bash
+gcloud compute disks create disk-for-nv --project=immon4ik-k8s --type=pd-standard \
+  --size=20GB --zone=europe-west1-b --image=centos-8-v20200504 --image-project=centos-cloud
+
+gcloud compute images create centos8-nested-vm-image --project=immon4ik-k8s \
+  --source-disk=disk-for-nv --source-disk-zone=europe-west1-b \
+  --licenses "https://compute.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx"
+
+gcloud compute instances create k8s-local-01 --zone=europe-west1-b --machine-type=n1-standard-1 \
+  --min-cpu-platform "Intel Haswell" --tags=http-server,https-server --image=centos8-nested-vm-image
+
+```
+
+- Откроем порты для проверки микросервисов:
+
+```bash
+gcloud compute firewall-rules create reddit-app \
+  --direction=INGRESS \
+  --priority=1000 \
+  --network=default \
+  --action=ALLOW \
+  --rules=tcp:8080,tcp:9292,tcp:5000 \
+  --source-ranges=0.0.0.0/0 \
+  --target-tags=ss-reddit-app-k8s
+
+```
+
+- Добавим созданный тег в инстанс k8s-local-01:
+
+```bash
+gcloud compute instances add-tags k8s-local-01 --tags=ss-reddit-app-k8s
+
+```
+
+- Подключаемся к созданному хосту:
+
+```bash
+ssh immon4ik@ip
+
+```
+
+- Устанавливаем kubectl, проверяем версию:
+
+```bash
+sudo dnf install -y kubectl && kubectl version --client
+
+```
+
+- Устанавливаем VB:
+
+```bash
+sudo dnf config-manager --add-repo=https://download.virtualbox.org/virtualbox/rpm/rhel/virtualbox.repo
+
+sudo dnf update -y
+sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+sudo dnf install -y binutils gcc make patch libgomp glibc-headers glibc-devel kernel-headers kernel-devel dkms
+sudo dnf install -y VirtualBox-6.1
+sudo /usr/lib/virtualbox/vboxdrv.sh setup
+sudo usermod -a -G vboxusers immon4ik
+
+```
+
+- Устанавливаем minikube:
+
+```bash
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 \
+  && chmod +x minikube
+
+sudo mkdir -p /usr/local/bin/
+sudo install minikube /usr/local/bin/
+
+```
+
+- __Замечена ошибки методички(по состоянию на 14.05.2020): неактуальная версии api для deployment, заменяем на apps/v1; неверная команда для minikube - minikube services list, заменяем на minikube service list__
+
+- Выполнив все парктические задания, касаемые minikube, сформирован пул yml-файлов расположенных в kubernetes/reddit/
+
+- __Т.к. я использую ресурсы gcp(рекомендую не скупиться и добавить) важным моментом является проброс портов vb,для проверки работы микросервисов и возможность ознакомится с веб-интерфейсом minikube.__ Воспользуемся открытыми источниками для решения данной задачи - <https://stackoverflow.com/questions/58093910/how-to-start-minikube-on-specific-network>
+
+```bash
+vboxmanage list vms
+vboxmanage controlvm "minikube" natpf1 "app,tcp,,9292,,32092"
+
+```
+
+- Выполнив все парктические задания, касаемые gke выявлена масса ошибок в методичке, особенно явная разница рассматриваемой версии и актуальной.
+
+-Сделан скриншот приложения kubernetes/screenshot/reddit-app.png:
+
+![reddit-app](https://github.com/Otus-DevOps-2019-11/immon4ik_microservices/blob/kubernetes-2/kubernetes/screenshot/reddit-app.png?raw=true)
+
+И сформировано правило firewall:
+
+```bash
+gcloud compute firewall-rules create k8s-allow \
+  --direction=INGRESS --priority=1000 --network=default \
+  --action=ALLOW --rules=tcp:30000-32767 --source-ranges=0.0.0.0/0
+```
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+### Задание со *
+
+<details>
+  <summary>ДЗ №20. Задание со *.</summary>
+
+- При помощи открытых источников (<https://learn.hashicorp.com/terraform/kubernetes/provision-gke-cluster>) сформированы сценарии сборки terraform, расположены в kubernetes/extra-k8s-2/terraform-provision-gke-cluster/
+
+gke.tf
+
+```tf
+# GKE cluster
+resource "google_container_cluster" "primary" {
+  name     = "${var.project_id}-gke"
+  location = var.region
+
+  remove_default_node_pool = true
+  initial_node_count       = 1
+
+  network    = google_compute_network.vpc.name
+  subnetwork = google_compute_subnetwork.subnet.name
+
+  master_auth {
+    username = var.gke_username
+    password = var.gke_password
+
+    client_certificate_config {
+      issue_client_certificate = false
+    }
+  }
+}
+
+# Separately Managed Node Pool
+resource "google_container_node_pool" "primary_nodes" {
+  name       = "${google_container_cluster.primary.name}-node-pool"
+  location   = var.region
+  cluster    = google_container_cluster.primary.name
+  node_count = var.gke_num_nodes
+
+  node_config {
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/logging.write",
+      "https://www.googleapis.com/auth/monitoring",
+    ]
+
+    labels = {
+      env = var.project_id
+    }
+
+    # preemptible  = true
+    machine_type = "n1-standard-1"
+    tags         = ["gke-node", "${var.project_id}-gke"]
+    metadata = {
+      disable-legacy-endpoints = "true"
+    }
+  }
+}
+
+```
+
+vpc.tf
+
+```tf
+provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+# VPC
+resource "google_compute_network" "vpc" {
+  name                    = "${var.project_id}-vpc"
+  auto_create_subnetworks = "false"
+}
+
+# Subnet
+resource "google_compute_subnetwork" "subnet" {
+  name          = "${var.project_id}-subnet"
+  region        = var.region
+  network       = google_compute_network.vpc.name
+  ip_cidr_range = "10.10.0.0/24"
+
+}
+
+resource "google_compute_firewall" "firewall-k8s" {
+  name    = "allow-k8s"
+  network = google_compute_network.vpc.name
+  allow {
+    protocol = "tcp"
+    ports    = var.ports
+  }
+  direction     = "INGRESS"
+  source_ranges = var.source_ranges
+  target_tags   = ["gke-node", "${var.project_id}-gke"]
+}
+
+```
+
+versions.tf
+
+```tf
+
+terraform {
+  required_version = ">= 0.12"
+}
+
+```
+
+variables.tf
+
+```tf
+variable "project_id" {
+  type        = string
+  description = "project id"
+}
+
+variable "region" {
+  type        = string
+  description = "region"
+}
+
+variable "source_ranges" {
+  type        = list(string)
+  description = "IP source range"
+}
+
+variable "ports" {
+  type        = list(string)
+  description = "Port range"
+}
+
+variable "gke_username" {
+  default     = ""
+  description = "gke username"
+}
+
+variable "gke_password" {
+  default     = ""
+  description = "gke password"
+}
+
+variable "gke_num_nodes" {
+  default     = 1
+  description = "number of gke nodes"
+}
+
+```
+
+terraform.tfvars
+
+```tf
+project_id    = "immon4ik-k8s"
+region        = "europe-west3"
+source_ranges = ["0.0.0.0/0"]
+ports         = ["30000-32767"]
+
+```
+
+outputs.tf
+
+```tf
+output "step_01_gcloud_connect_command" {
+  value = "gcloud container clusters get-credentials ${var.project_id}-gke --region ${var.region}"
+}
+
+output "step_02_deploy_the_k8s_dashboard_command" {
+  value = "kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-beta8/aio/deploy/recommended.yaml"
+}
+
+output "step_03_create_a_ClusterRoleBinding_command" {
+  value = "kubectl apply -f https://raw.githubusercontent.com/hashicorp/learn-terraform-provision-eks-cluster/master/kubernetes-dashboard-admin.rbac.yaml"
+}
+
+output "step_04_generate_the_authorization_token_command" {
+  value = "kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep service-controller-token | awk '{print $1}')"
+}
+
+output "step_05_create_a_proxy_server_command" {
+  value = "kubectl proxy"
+}
+
+output "step_05_k8s_dashboard_link" {
+  value = "http://127.0.0.1:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/"
+}
+
+
+```
+
+- Запускаем поднятие кластера из каталога kubernetes/extra-k8s-2/terraform-gke-cluster/:
+
+```bash
+cd kubernetes/extra-k8s-2/terraform-gke-cluster/
+terraform fmt
+terraform init
+terraform apply --auto-approve
+
+```
+
+- Чтобы подключиться к кластеру, установить дашборд и настроить доступ можно воспользоваться командами из outputs:
+
+```bash
+gcloud container clusters get-credentials immon4ik-k8s-gke --region europe-west3
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-beta8/aio/deploy/recommended.yaml
+kubectl apply -f https://raw.githubusercontent.com/hashicorp/learn-terraform-provision-eks-cluster/master/kubernetes-dashboard-admin.rbac.yaml
+kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep service-controller-token | awk '{print $1}')
+kubectl proxy --address 0.0.0.0 --accept-hosts '.*'
+curl http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+
+```
+
+- Погасим кластер:
+
+```bash
+terraform destroy --auto-approve
+
+```
+
+- Добавим в свой репо настройки dashboard:
+
+kubernetes/extra-k8s-2/terraform-gke-cluster/recommended.yaml
+
+```yml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubernetes-dashboard
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+spec:
+  ports:
+    - port: 443
+      targetPort: 8443
+  selector:
+    k8s-app: kubernetes-dashboard
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard-certs
+  namespace: kubernetes-dashboard
+type: Opaque
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard-csrf
+  namespace: kubernetes-dashboard
+type: Opaque
+data:
+  csrf: ""
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard-key-holder
+  namespace: kubernetes-dashboard
+type: Opaque
+
+---
+
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard-settings
+  namespace: kubernetes-dashboard
+
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+rules:
+  # Allow Dashboard to get, update and delete Dashboard exclusive secrets.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["kubernetes-dashboard-key-holder", "kubernetes-dashboard-certs", "kubernetes-dashboard-csrf"]
+    verbs: ["get", "update", "delete"]
+    # Allow Dashboard to get and update 'kubernetes-dashboard-settings' config map.
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["kubernetes-dashboard-settings"]
+    verbs: ["get", "update"]
+    # Allow Dashboard to get metrics.
+  - apiGroups: [""]
+    resources: ["services"]
+    resourceNames: ["heapster", "dashboard-metrics-scraper"]
+    verbs: ["proxy"]
+  - apiGroups: [""]
+    resources: ["services/proxy"]
+    resourceNames: ["heapster", "http:heapster:", "https:heapster:", "dashboard-metrics-scraper", "http:dashboard-metrics-scraper"]
+    verbs: ["get"]
+
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+rules:
+  # Allow Metrics Scraper to get metrics from the Metrics server
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list", "watch"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kubernetes-dashboard
+subjects:
+  - kind: ServiceAccount
+    name: kubernetes-dashboard
+    namespace: kubernetes-dashboard
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubernetes-dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubernetes-dashboard
+subjects:
+  - kind: ServiceAccount
+    name: kubernetes-dashboard
+    namespace: kubernetes-dashboard
+
+---
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      k8s-app: kubernetes-dashboard
+  template:
+    metadata:
+      labels:
+        k8s-app: kubernetes-dashboard
+    spec:
+      containers:
+        - name: kubernetes-dashboard
+          image: kubernetesui/dashboard:v2.0.0-beta8
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8443
+              protocol: TCP
+          args:
+            - --auto-generate-certificates
+            - --namespace=kubernetes-dashboard
+            # Uncomment the following line to manually specify Kubernetes API server Host
+            # If not specified, Dashboard will attempt to auto discover the API server and connect
+            # to it. Uncomment only if the default does not work.
+            # - --apiserver-host=http://my-address:port
+          volumeMounts:
+            - name: kubernetes-dashboard-certs
+              mountPath: /certs
+              # Create on-disk volume to store exec logs
+            - mountPath: /tmp
+              name: tmp-volume
+          livenessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /
+              port: 8443
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 1001
+            runAsGroup: 2001
+      volumes:
+        - name: kubernetes-dashboard-certs
+          secret:
+            secretName: kubernetes-dashboard-certs
+        - name: tmp-volume
+          emptyDir: {}
+      serviceAccountName: kubernetes-dashboard
+      nodeSelector:
+        "beta.kubernetes.io/os": linux
+      # Comment the following tolerations if Dashboard must not be deployed on master
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    k8s-app: dashboard-metrics-scraper
+  name: dashboard-metrics-scraper
+  namespace: kubernetes-dashboard
+spec:
+  ports:
+    - port: 8000
+      targetPort: 8000
+  selector:
+    k8s-app: dashboard-metrics-scraper
+
+---
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    k8s-app: dashboard-metrics-scraper
+  name: dashboard-metrics-scraper
+  namespace: kubernetes-dashboard
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      k8s-app: dashboard-metrics-scraper
+  template:
+    metadata:
+      labels:
+        k8s-app: dashboard-metrics-scraper
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: 'runtime/default'
+    spec:
+      containers:
+        - name: dashboard-metrics-scraper
+          image: kubernetesui/metrics-scraper:v1.0.1
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              scheme: HTTP
+              path: /
+              port: 8000
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+          volumeMounts:
+          - mountPath: /tmp
+            name: tmp-volume
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 1001
+            runAsGroup: 2001
+      serviceAccountName: kubernetes-dashboard
+      nodeSelector:
+        "beta.kubernetes.io/os": linux
+      # Comment the following tolerations if Dashboard must not be deployed on master
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+
+```
+
+kubernetes/extra-k8s-2/terraform-gke-cluster/kubernetes-dashboard-admin.rbac.yaml
+
+```yml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kube-system
+---
+# Create ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kube-system
+
+```
+
+- Теперь перейдём на свою локальный хост windows и проделаем все теже операции, но из корня репо и с собственными сценариями для дашборда:
+
+```powershell
+cd kubernetes/extra-k8s-2/terraform-gke-cluster/
+terraform fmt
+terraform init
+terraform apply --auto-approve
+gcloud container clusters get-credentials immon4ik-k8s-gke --region europe-west3
+kubectl apply -f recommended.yaml
+kubectl apply -f kubernetes-dashboard-admin.rbac.yaml
+kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | findstr service-controller-token | awk '{print $1}')
+kubectl proxy --address 0.0.0.0 --accept-hosts '.*'
+curl http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+
+```
+
+- Получили рабочий дашборд, в который можно авторизоваться, используя сгенерированный токен service-controller-token-*
+
+![k8s-dashboard-localhost](https://github.com/Otus-DevOps-2019-11/immon4ik_microservices/blob/kubernetes-2/kubernetes/screenshot/k8s-dashboard-localhost.png?raw=true)
+
+- Погасим кластер:
+
+```powershell
+terraform destroy --auto-approve
 
 ```
 
