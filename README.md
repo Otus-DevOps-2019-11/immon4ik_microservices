@@ -72,6 +72,12 @@
   - [ДЗ №22](#дз-22)
     - [Основное задание](#основное-задание-16)
     - [Задание со *](#задание-со--13)
+  - [ДЗ №23](#дз-23)
+    - [Основное задание. Часть 1.](#основное-задание-часть-1)
+    - [Задание со *. Часть 1.](#задание-со--часть-1-3)
+    - [Задание со *. Часть 2.](#задание-со--часть-2-3)
+    - [Основное задание. Часть 2.](#основное-задание-часть-2)
+    - [Задание со *. Часть 3.](#задание-со--часть-3)
 
 # immon4ik_infra
 
@@ -2849,7 +2855,7 @@ vboxmanage controlvm "minikube" natpf1 "app,tcp,,9292,,32092"
 
 -Сделан скриншот приложения kubernetes/screenshot/reddit-app.png:
 
-![reddit-app](https://github.com/immon4ik/otus_2019/blob/kubernetes-2/kubernetes/screenshot/reddit-app.png?raw=true)
+![reddit-app](https://github.com/Otus-DevOps-2019-11/immon4ik_microservices/blob/kubernetes-2/kubernetes/screenshot/reddit-app.png?raw=true)
 
 И сформировано правило firewall:
 
@@ -3419,7 +3425,7 @@ curl http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https
 
 - Получили рабочий дашборд, в который можно авторизоваться, используя сгенерированный токен service-controller-token-*
 
-![k8s-dashboard-localhost](https://github.com/immon4ik/otus_2019/blob/kubernetes-2/kubernetes/screenshot/k8s-dashboard-localhost.png?raw=true)
+![k8s-dashboard-localhost](https://github.com/Otus-DevOps-2019-11/immon4ik_microservices/blob/kubernetes-2/kubernetes/screenshot/k8s-dashboard-localhost.png?raw=true)
 
 - Погасим кластер:
 
@@ -4829,6 +4835,996 @@ production:
 
 ```powershell
 cd kubernetes/terraform-k8s-4/
+terraform destroy --auto-approve
+
+```
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+## ДЗ №23
+
+### Основное задание. Часть 1.
+
+<details>
+  <summary>ДЗ №23. Основное задание. Часть 1.</summary>
+
+__Перед финальным ДЗ скорректирована архитектура папок внутри kubernetes. Каталоги сгрупированы по принадлежности к ветке и имеют имя вида k8s-*.__
+
+- Поднят кластер:
+
+```powershell
+cd kubernetes/k8s-4/terraform-k8s-4/
+terraform apply --auto-approve
+gcloud container clusters get-credentials immon4ik-k8s-gke --zone europe-west3-b
+
+```
+
+- Включена network-policy, создан namespase, применена политика mongo-network-policy.yml для окружения dev, добавлен дополнительный serviceaccounts для GKE:
+
+```powershell
+gcloud container clusters update immon4ik-k8s-gke --zone=europe-west3-b --update-addons=NetworkPolicy=ENABLED
+gcloud container clusters update immon4ik-k8s-gke --zone=europe-west3-b  --enable-network-policy
+cd kubernetes/
+kubectl apply -f k8s-3/reddit-k8s-3/dev-namespace.yml
+kubectl apply -f k8s-3/reddit-k8s-3/mongo-network-policy.yml -n dev
+kubectl apply -f k8s-4/terraform-k8s-4/kubernetes-dashboard-admin.rbac.yaml
+kubectl create clusterrolebinding serviceaccounts-cluster-admin --clusterrole=cluster-admin --group=system:serviceaccounts
+
+```
+
+- Полезные команды для выполнения практических заданий, используя helm v3.2.1. Часть 1:
+
+>usefull+nginx
+
+```powershell
+cd kubernetes/Charts
+helm version
+helm ls --all-namespaces
+helm upgrade --install nginx stable/nginx-ingress
+kubectl get svc
+
+```
+
+>reddit
+
+```powershell
+cd kubernetes/Charts
+helm upgrade --install --wait reddit-test reddit/
+helm upgrade --install --namespace=production --wait production reddit/
+helm upgrade --install --namespace=staging --wait staging reddit/
+
+```
+
+>prometheus
+
+```powershell
+cd kubernetes/Charts
+helm pull stable/prometheus --untar
+helm upgrade --install prom prometheus/ -f prometheus/custom_values.yml
+
+```
+
+- Конфигурация job’а reddit-endpoints разбита на 3 job’а для каждого из микросервисов приложений, reddit-endpoints закомментирован:
+
+kubernetes/Charts/prometheus/custom_values.yml
+
+```yml
+[...]
+# hw23
+      # - job_name: 'reddit-endpoints'
+      #   kubernetes_sd_configs:
+      #       - role: endpoints
+      #   relabel_configs:
+      #     - action: labelmap
+      #       regex: __meta_kubernetes_service_label_(.+)
+      #     - source_labels: [__meta_kubernetes_namespace]
+      #       target_label: kubernetes_namespace
+      #     - source_labels: [__meta_kubernetes_service_name]
+      #       target_label: kubernetes_name
+
+      - job_name: 'reddit-production'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_service_label_(.+)
+          - source_labels: [__meta_kubernetes_service_label_app, __meta_kubernetes_namespace]
+            action: keep
+            regex: reddit;(production|staging)+
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_service_name]
+            target_label: kubernetes_name
+
+      - job_name: 'ui-endpoints'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_service_label_(.+)
+          - source_labels: [__meta_kubernetes_service_label_app]
+            action: keep
+            regex: ui
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_service_name]
+            target_label: kubernetes_name
+
+      - job_name: 'comment-endpoints'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_service_label_(.+)
+          - source_labels: [__meta_kubernetes_service_label_app]
+            action: keep
+            regex: comment
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_service_name]
+            target_label: kubernetes_name
+
+      - job_name: 'post-endpoints'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_service_label_(.+)
+          - source_labels: [__meta_kubernetes_service_label_app]
+            action: keep
+            regex: post
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_service_name]
+            target_label: kubernetes_name
+[...]
+
+```
+
+- Полезные команды для выполнения практических заданий, используя helm v3.2.1. Часть 2:
+
+>grafana
+
+```powershell
+cd kubernetes/Charts
+helm upgrade --install grafana stable/grafana --set "server.adminPassword=admin" `
+--set "server.service.type=NodePort" `
+--set "server.ingress.enabled=true" `
+--set "server.ingress.hosts={reddit-grafana}"
+
+```
+
+- *__Grafana не опубликовалась, видимо в новой версии изменен values.yaml, относительно версии из ДЗ. Запулим себе chart для grafana.__ Манифест кастомизирован для публикации на хосте reddit-grafana, сохранен как kubernetes/Chartsgrafana/custom_values.yaml и поднята grafana.*
+
+```powershell
+cd kubernetes/Charts
+helm pull stable/grafana --untar
+helm upgrade --install grafana grafana/ -f grafana/custom_values.yaml
+kubectl get svc
+
+```
+
+- Выполнены задания по grafana. В новой версии Templating изменен на Variables, в остальном принцип настройки остался таким же. Доработанные дашборды сохранены в kubernetes/k8s-5/grafana-k8s-5/dashboards.
+
+- Полезные значения для параметризации шаблонов grafana:
+
+```param
+namespace
+Env
+label_values(namespace)
+/.+/
+ui_request_count{namespace=~"namespace"}
+
+```
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+### Задание со *. Часть 1.
+
+<details>
+  <summary>ДЗ №23. Задание со *. Часть 1.</summary>
+
+- Для реализации alertmanager в Slack получен Incoming WebHooks, создан почтовый адрес. При использовании monitoring/alertmanager/comfig.yml и monitoring/prometheus/alerts.yml из ДЗ monitoring-2 был доработан манифест для prometheus:
+
+kubernetes/Charts/prometheus/custom_values.yml
+
+```yml
+[...]
+rbac:
+  create: false
+
+alertmanager:
+  ## If false, alertmanager will not be installed
+  ##
+  enabled: true
+
+  # Defines the serviceAccountName to use when `rbac.create=false`
+  serviceAccountName: default
+
+  ## alertmanager container name
+  ##
+  name: alertmanager
+
+  ## alertmanager container image
+  ##
+  image:
+    repository: prom/alertmanager
+    tag: v0.20.0
+    pullPolicy: IfNotPresent
+
+  ## Additional alertmanager container arguments
+  ##
+  extraArgs: {}
+
+  ## The URL prefix at which the container can be accessed. Useful in the case the '-web.external-url' includes a slug
+  ## so that the various internal URLs are still able to access as they are in the default case.
+  ## (Optional)
+  baseURL: "http://reddit-alertmanager"
+
+  ## Additional alertmanager container environment variable
+  ## For instance to add a http_proxy
+  ##
+  extraEnv: {}
+
+  ## ConfigMap override where fullname is {{.Release.Name}}-{{.Values.alertmanager.configMapOverrideName}}
+  ## Defining configMapOverrideName will cause templates/alertmanager-configmap.yaml
+  ## to NOT generate a ConfigMap resource
+  ##
+  configMapOverrideName: ""
+
+  ingress:
+    ## If true, alertmanager Ingress will be created
+    ##
+    enabled: true
+
+    ## alertmanager Ingress annotations
+    ##
+    annotations:
+      kubernetes.io/ingress.class: nginx
+    #   kubernetes.io/ingress.class: nginx
+    #   kubernetes.io/tls-acme: 'true'
+
+    ## alertmanager Ingress hostnames
+    ## Must be provided if Ingress is enabled
+    ##
+    hosts:
+      - reddit-alertmanager
+
+    ## alertmanager Ingress TLS configuration
+    ## Secrets must be manually created in the namespace
+    ##
+    tls: []
+    #   - secretName: prometheus-alerts-tls
+    #     hosts:
+    #       - alertmanager.domain.com
+
+  # Alertmanager Deployment Strategy type
+  strategy:
+    type: Recreate
+
+  ## Node labels for alertmanager pod assignment
+  ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+  ##
+  nodeSelector: {}
+
+  persistentVolume:
+    ## If true, alertmanager will create/use a Persistent Volume Claim
+    ## If false, use emptyDir
+    ##
+    enabled: false
+
+    ## alertmanager data Persistent Volume access modes
+    ## Must match those of existing PV or dynamic provisioner
+    ## Ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+    ##
+    accessModes:
+      - ReadWriteOnce
+
+    ## alertmanager data Persistent Volume Claim annotations
+    ##
+    annotations: {}
+
+    ## alertmanager data Persistent Volume existing claim name
+    ## Requires alertmanager.persistentVolume.enabled: true
+    ## If defined, PVC must be created manually before volume will be bound
+    existingClaim: ""
+
+    ## alertmanager data Persistent Volume mount root path
+    ##
+    mountPath: /data
+
+    ## alertmanager data Persistent Volume size
+    ##
+    size: 2Gi
+
+    ## alertmanager data Persistent Volume Storage Class
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    # storageClass: "-"
+
+    ## Subdirectory of alertmanager data Persistent Volume to mount
+    ## Useful if the volume's root directory is not empty
+    ##
+    subPath: ""
+
+  ## Annotations to be added to alertmanager pods
+  ##
+  podAnnotations: {}
+
+  replicaCount: 1
+
+  ## alertmanager resource requests and limits
+  ## Ref: http://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources: {}
+    # limits:
+    #   cpu: 10m
+    #   memory: 32Mi
+    # requests:
+    #   cpu: 10m
+    #   memory: 32Mi
+
+  service:
+    annotations: {}
+    labels: {}
+    clusterIP: ""
+
+    ## List of IP addresses at which the alertmanager service is available
+    ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
+    ##
+    externalIPs: []
+
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+    servicePort: 80
+    # nodePort: 30000
+    # type: ClusterIP
+    type: NodePort
+
+## Monitors ConfigMap changes and POSTs to a URL
+## Ref: https://github.com/jimmidyson/configmap-reload
+##
+configmapReload:
+  ## configmap-reload container name
+  ##
+  name: configmap-reload
+
+  ## configmap-reload container image
+  ##
+  image:
+    repository: jimmidyson/configmap-reload
+    tag: v0.1
+    pullPolicy: IfNotPresent
+
+  ## configmap-reload resource requests and limits
+  ## Ref: http://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources: {}
+
+kubeStateMetrics:
+  ## If false, kube-state-metrics will not be installed
+  ##
+  enabled: true
+
+  # Defines the serviceAccountName to use when `rbac.create=false`
+  serviceAccountName: default
+
+  ## kube-state-metrics container name
+  ##
+  name: kube-state-metrics
+
+  ## kube-state-metrics container image
+  ##
+  image:
+    repository: gcr.io/google_containers/kube-state-metrics
+    tag: v1.1.0
+    pullPolicy: IfNotPresent
+
+  ## Node labels for kube-state-metrics pod assignment
+  ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+  ##
+  nodeSelector: {}
+
+  ## Annotations to be added to kube-state-metrics pods
+  ##
+  podAnnotations: {}
+
+  replicaCount: 1
+
+  ## kube-state-metrics resource requests and limits
+  ## Ref: http://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources: {}
+    # limits:
+    #   cpu: 10m
+    #   memory: 16Mi
+    # requests:
+    #   cpu: 10m
+    #   memory: 16Mi
+
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+    labels: {}
+
+    clusterIP: None
+
+    ## List of IP addresses at which the kube-state-metrics service is available
+    ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
+    ##
+    externalIPs: []
+
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+    servicePort: 80
+    type: ClusterIP
+
+nodeExporter:
+  ## If false, node-exporter will not be installed
+  ##
+  enabled: true
+
+  # Defines the serviceAccountName to use when `rbac.create=false`
+  serviceAccountName: default
+
+  ## node-exporter container name
+  ##
+  name: node-exporter
+
+  ## node-exporter container image
+  ##
+  image:
+    repository: prom/node-exporter
+    tag: v0.15.1
+    pullPolicy: IfNotPresent
+
+  ## Custom Update Strategy
+  ##
+  updateStrategy:
+    type: OnDelete
+
+  ## Additional node-exporter container arguments
+  ##
+  extraArgs: {}
+
+  ## Additional node-exporter hostPath mounts
+  ##
+  extraHostPathMounts: []
+    # - name: textfile-dir
+    #   mountPath: /srv/txt_collector
+    #   hostPath: /var/lib/node-exporter
+    #   readOnly: true
+
+  ## Node tolerations for node-exporter scheduling to nodes with taints
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  ##
+  tolerations: []
+    # - key: "key"
+    #   operator: "Equal|Exists"
+    #   value: "value"
+    #   effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+
+  ## Node labels for node-exporter pod assignment
+  ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+  ##
+  nodeSelector: {}
+
+  ## Annotations to be added to node-exporter pods
+  ##
+  podAnnotations: {}
+
+  ## node-exporter resource limits & requests
+  ## Ref: https://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources: {}
+    # limits:
+    #   cpu: 200m
+    #   memory: 50Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 30Mi
+
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+    labels: {}
+
+    clusterIP: None
+
+    ## List of IP addresses at which the node-exporter service is available
+    ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
+    ##
+    externalIPs: []
+
+    hostPort: 9100
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+    servicePort: 9100
+    type: ClusterIP
+
+server:
+  ## Prometheus server container name
+  ##
+  name: server
+
+  # Defines the serviceAccountName to use when `rbac.create=false`
+  serviceAccountName: default
+
+  ## Prometheus server container image
+  ##
+  image:
+    repository: prom/prometheus
+    tag: v2.0.0
+    pullPolicy: IfNotPresent
+
+  ## (optional) alertmanager hostname
+  ## only used if alertmanager.enabled = false
+  alertmanagerHostname: ""
+
+  ## The URL prefix at which the container can be accessed. Useful in the case the '-web.external-url' includes a slug
+  ## so that the various internal URLs are still able to access as they are in the default case.
+  ## (Optional)
+  baseURL: ""
+
+  ## Additional Prometheus server container arguments
+  ##
+  extraArgs: {}
+
+  ## Additional Prometheus server hostPath mounts
+  ##
+  extraHostPathMounts: []
+    # - name: certs-dir
+    #   mountPath: /etc/kubernetes/certs
+    #   hostPath: /etc/kubernetes/certs
+    #   readOnly: true
+
+  ## ConfigMap override where fullname is {{.Release.Name}}-{{.Values.server.configMapOverrideName}}
+  ## Defining configMapOverrideName will cause templates/server-configmap.yaml
+  ## to NOT generate a ConfigMap resource
+  ##
+  configMapOverrideName: ""
+
+  ingress:
+    ## If true, Prometheus server Ingress will be created
+    ##
+    enabled: true
+
+    ## Prometheus server Ingress annotations
+    ##
+    annotations:
+      kubernetes.io/ingress.class: nginx
+    #   kubernetes.io/ingress.class: nginx
+    #   kubernetes.io/tls-acme: 'true'
+
+    ## Prometheus server Ingress hostnames
+    ## Must be provided if Ingress is enabled
+    ##
+    hosts:
+     - reddit-prometheus
+
+    ## Prometheus server Ingress TLS configuration
+    ## Secrets must be manually created in the namespace
+    ##
+    tls: []
+    #   - secretName: prometheus-server-tls
+    #     hosts:
+    #       - prometheus.domain.com
+
+  ## Server Deployment Strategy type
+  # strategy:
+  #   type: Recreate
+
+  ## Node tolerations for server scheduling to nodes with taints
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  ##
+  tolerations: []
+    # - key: "key"
+    #   operator: "Equal|Exists"
+    #   value: "value"
+    #   effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+
+  ## Node labels for Prometheus server pod assignment
+  ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+  nodeSelector: {}
+
+  persistentVolume:
+    ## If true, Prometheus server will create/use a Persistent Volume Claim
+    ## If false, use emptyDir
+    ##
+    enabled: true
+
+    ## Prometheus server data Persistent Volume access modes
+    ## Must match those of existing PV or dynamic provisioner
+    ## Ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+    ##
+    accessModes:
+      - ReadWriteOnce
+
+    ## Prometheus server data Persistent Volume annotations
+    ##
+    annotations: {}
+
+    ## Prometheus server data Persistent Volume existing claim name
+    ## Requires server.persistentVolume.enabled: true
+    ## If defined, PVC must be created manually before volume will be bound
+    existingClaim: ""
+
+    ## Prometheus server data Persistent Volume mount root path
+    ##
+    mountPath: /data
+
+    ## Prometheus server data Persistent Volume size
+    ##
+    size: 8Gi
+
+    ## Prometheus server data Persistent Volume Storage Class
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    # storageClass: "-"
+
+    ## Subdirectory of Prometheus server data Persistent Volume to mount
+    ## Useful if the volume's root directory is not empty
+    ##
+    subPath: ""
+
+  ## Annotations to be added to Prometheus server pods
+  ##
+  podAnnotations: {}
+    # iam.amazonaws.com/role: prometheus
+
+  replicaCount: 1
+
+  ## Prometheus server resource requests and limits
+  ## Ref: http://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 500m
+    #   memory: 512Mi
+
+  service:
+    annotations: {}
+    labels: {}
+    clusterIP: ""
+
+    ## List of IP addresses at which the Prometheus server service is available
+    ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
+    ##
+    externalIPs: []
+
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+    servicePort: 80
+    # type: LoadBalancer
+    type: NodePort
+
+  ## Prometheus server pod termination grace period
+  ##
+  terminationGracePeriodSeconds: 300
+
+  ## Prometheus data retention period (i.e 360h)
+  ##
+  retention: ""
+
+pushgateway:
+  ## If false, pushgateway will not be installed
+  ##
+  enabled: false
+
+  ## pushgateway container name
+  ##
+  name: pushgateway
+
+  ## pushgateway container image
+  ##
+  image:
+    repository: prom/pushgateway
+    tag: v0.4.0
+    pullPolicy: IfNotPresent
+
+  ## Additional pushgateway container arguments
+  ##
+  extraArgs: {}
+
+  ingress:
+    ## If true, pushgateway Ingress will be created
+    ##
+    enabled: false
+
+    ## pushgateway Ingress annotations
+    ##
+    annotations:
+    #   kubernetes.io/ingress.class: nginx
+    #   kubernetes.io/tls-acme: 'true'
+
+    ## pushgateway Ingress hostnames
+    ## Must be provided if Ingress is enabled
+    ##
+    hosts: []
+    #   - pushgateway.domain.com
+
+    ## pushgateway Ingress TLS configuration
+    ## Secrets must be manually created in the namespace
+    ##
+    tls: []
+    #   - secretName: prometheus-alerts-tls
+    #     hosts:
+    #       - pushgateway.domain.com
+
+  ## Node labels for pushgateway pod assignment
+  ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+  ##
+  nodeSelector: {}
+
+  ## Annotations to be added to pushgateway pods
+  ##
+  podAnnotations: {}
+
+  replicaCount: 1
+
+  ## pushgateway resource requests and limits
+  ## Ref: http://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources: {}
+    # limits:
+    #   cpu: 10m
+    #   memory: 32Mi
+    # requests:
+    #   cpu: 10m
+    #   memory: 32Mi
+
+  service:
+    annotations:
+      prometheus.io/probe: pushgateway
+    labels: {}
+    clusterIP: ""
+
+    ## List of IP addresses at which the pushgateway service is available
+    ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
+    ##
+    externalIPs: []
+
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+    servicePort: 9091
+    type: ClusterIP
+
+## alertmanager ConfigMap entries
+##
+alertmanagerFiles:
+  alertmanager.yml:
+    global:
+      # slack_api_url: ''
+      slack_api_url: 'https://hooks.slack.com/services/token'
+    receivers:
+      - name: 'slack-notifications'
+        slack_configs:
+        - channel: '#pavel-batsev'
+          title: "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}"
+          text: "{{ range .Alerts }}{{ .Annotations.description }}\n{{ end }}"
+        email_configs:
+        - to: 'otus@immon.pro'
+          from: 'otus@immon.pro'
+          smarthost: 'smtp.mail.ru:465'
+          auth_username: 'otus@immon.pro'
+          auth_password: 'Trewq123'
+          send_resolved: true
+          require_tls: false
+          headers:
+            Subject: "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}"
+        #- name: default-receiver
+        # slack_configs:
+        #  - channel: '@you'
+        #    send_resolved: true
+
+    route:
+      receiver: 'slack-notifications'
+      # group_wait: 10s
+      # group_interval: 5m
+      # receiver: default-receiver
+      # repeat_interval: 3h
+
+## Prometheus server ConfigMap entries
+##
+serverFiles:
+
+  alerting_rules.yml:
+    groups:
+    - name: alert.rules
+      rules:
+      - alert: ApiNodesDown
+        expr: up{job=~"kubernetes-(apiservers|nodes)"} == 1
+        for: 1m
+        labels:
+          severity: control
+        annotations:
+          summary: 'Instance {{ $labels.instance }} down'
+          description: '{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minute.'
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "Instance {{ $labels.instance }} down"
+          description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minute"
+      - alert: InstanceUp
+        expr: up == 1
+        for: 1m
+        labels:
+          severity: info
+        annotations:
+          summary: "Instance {{$labels.instance}} up"
+          description: "{{$labels.instance}} of job {{$labels.job}} has been up for more than 1 minutes."
+      - alert: PrometheusNotConnectedToAlertmanager
+        expr: prometheus_notifications_alertmanagers_discovered < 1
+        for: 5m
+        labels:
+          severity: error
+        annotations:
+          summary: "Prometheus not connected to alertmanager (instance {{ $labels.instance }})"
+          description: "Prometheus cannot connect the alertmanager\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  alerts: {}
+  rules: {}
+
+  prometheus.yml:
+    rule_files:
+      - /etc/config/alerting_rules.yml
+      - /etc/config/rules
+      - /etc/config/alerts
+
+    global:
+      scrape_interval: 30s
+
+    scrape_configs:
+      - job_name: prometheus
+        static_configs:
+          - targets:
+            - localhost:9090
+
+[...]
+
+```
+
+- Обновлен релиз prometheus:
+
+```powershell
+cd kubernetes/Charts
+helm upgrade --install prom prometheus/ -f prometheus/custom_values.yml
+
+```
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+### Задание со *. Часть 2.
+
+<details>
+  <summary>ДЗ №23. Задание со *. Часть 2.</summary>
+
+- Установлен prometheus-operator. Была рассмотрена реализации <https://github.com/bitnami/charts/tree/master/bitnami/prometheus-operator> и <https://github.com/helm/charts/tree/master/stable/prometheus-operator>. Протестирована установка комплекса prometheus-operator различными способами, в результате был сформирован манифест(на основе манифестов для prometheus\grafana, сформированных ранее) kubernetes/k8s-5/extra-k8s-5/prometheus-operator/custom_values.yaml.
+
+- Полезные команды для поднятия prometheus-operator, используя helm v3.2.1.
+
+```powershell
+cd kubernetes/Charts
+helm pull stable/prometheus-operator --untar
+helm upgrade --install promplus stable/prometheus-operator
+helm upgrade --install promplus prometheus-operator/ -f prometheus-operator/custom_values.yaml
+helm upgrade --install promplus stable/prometheus-operator -f prometheus-operator/custom_values.yaml
+rm prometheus-operator
+cd ..
+helm upgrade --install promplus stable/prometheus-operator -f k8s-5/extra-k8s-5/prometheus-operator/custom_values.yaml
+
+```
+
+- Мониторинг post endpoints настроен через добавление additionalScrapeConfigs в кастомизированный манифест kubernetes/k8s-5/extra-k8s-5/prometheus-operator/custom_values.yaml:
+
+```yaml
+[...]
+    additionalScrapeConfigs:
+      - job_name: "post-endpoints"
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_label_app]
+            action: keep
+            regex: reddit
+          - source_labels: [__meta_kubernetes_service_label_component]
+            action: keep
+            regex: post
+          - action: labelmap # Отобразить все совпадения групп
+            regex: __meta_kubernetes_service_label_(.+) # из regex в label’ы Prometheus
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_service_name]
+            target_label: kubernetes_name
+[...]
+
+```
+
+- Обновлен релиз prometheus-operator:
+
+```powershell
+cd kubernetes
+helm upgrade --install promplus stable/prometheus-operator -f k8s-5/extra-k8s-5/prometheus-operator/custom_values.yaml
+
+```
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+### Основное задание. Часть 2.
+
+<details>
+  <summary>ДЗ №23. Основное задание. Часть 2.</summary>
+
+- Загружены манифесты из методички по пути kubernetes/Charts/efk/. Полезные команды для поднятия efk, используя helm v3.2.1:
+
+>es+fluentd
+
+```powershell
+cd kubernetes/Charts
+kubectl get nodes
+kubectl label node gke-immon4ik-k8s-gke-immon4ik-k8s-gke-b943328c-l2bl elastichost=true
+kubectl apply -f efk/
+
+```
+
+>kibana
+
+```powershell
+cd kubernetes/Charts
+helm upgrade --install kibana stable/kibana `
+--set "ingress.enabled=true" `
+--set "ingress.hosts={reddit-kibana}" `
+--set "env.ELASTICSEARCH_URL=http://elasticsearch-logging:9200" `
+--version 0.1.1
+
+```
+
+[Карта домашних заданий](#карта-домашних-заданий)
+
+</details>
+
+### Задание со *. Часть 3.
+
+<details>
+  <summary>ДЗ №23. Задание со *. Часть 3.</summary>
+
+- Все манифесты по реализации efk используя helm добавлены в kubernetes/k8s-5/extra-efk-k8s-5/. Полезные команды для поднятия efk, используя helm v3.2.1:
+
+```powershell
+cd kubernetes/k8s-5/
+helm dep update extra-efk-k8s-5/
+kubectl get configmap
+kubectl delete configmap fluentd-es-config-v0.1.1
+helm upgrade --install efk extra-efk-k8s-5/
+
+```
+
+- Погашен кластер:
+
+```powershell
+cd kubernetes/k8s-4/terraform-k8s-4/
 terraform destroy --auto-approve
 
 ```
