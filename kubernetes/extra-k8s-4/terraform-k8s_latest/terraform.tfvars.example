@@ -1,0 +1,5 @@
+project    = "immon4ik-k8s"
+location          = "europe-west3-b"
+region        = "europe-west3"
+cluster_name = "immon4ik-k8s-gke"
+cluster_service_account_name = "immon4ik-cluster-sa"

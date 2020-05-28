@@ -1,0 +1,5 @@
+project_id    = "immon4ik-k8s"
+region        = "europe-west3"
+zone          = "europe-west3-b"
+source_ranges = ["0.0.0.0/0"]
+ports         = ["30000-32767"]

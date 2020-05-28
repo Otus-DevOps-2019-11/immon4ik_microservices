@@ -1,0 +1,15 @@
+dependencies:
+- name: ui
+  repository: file://../ui
+  version: 1.0.0
+- name: post
+  repository: file://../post
+  version: 1.0.0
+- name: comment
+  repository: file://../comment
+  version: 1.0.0
+- name: mongodb
+  repository: https://charts.bitnami.com/bitnami
+  version: 7.14.1
+digest: sha256:98430ec01dd3f8421666e77ea80186c75596db2d2391ae9e7dd4bfde703293c8
+generated: "2020-05-20T19:30:05.7886594+03:00"
